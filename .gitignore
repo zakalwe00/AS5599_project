@@ -3,8 +3,17 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+# Emacs backup files
+*~
+
 # C extensions
 *.so
+
+# Log files
+*.log
+
+# Data files
+*.dat
 
 # Distribution / packaging
 .Python
