@@ -17,7 +17,7 @@ output_dir = '{}/../output/'.format(os.getcwd())
 #Only fit a subsection of lightcurves- those available from calibration
 #'g' filter is suggested as having highest signal-to-noise (from paper) https://arxiv.org/pdf/2302.09370.pdf
 #and first filter is taken as delay reference time
-fltrs=['V','g','B']
+fltrs=['V','g','B','i']
 
 #set this to a reasonable guess to improve 'burn-in' time
 init_tau = [5.0, 10.0]
