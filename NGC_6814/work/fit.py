@@ -4,9 +4,9 @@ import os, re
 import pandas as pd
 #import numpy as np
 import matplotlib
-matplotlib.use('Agg')
+#matplotlib.use('Agg')
 import matplotlib.pyplot as plt
-import PyROA
+#import PyROA
 import csv
 
 # Set Seyfert 1 Galaxy name in this case (will be argument to this script?)
@@ -53,6 +53,7 @@ if os.path.exists(calib_curve_plot) == False:
     axs[-1].set_xlabel('Time (days, MJD)')
 
     plt.savefig(calib_curve_plot)
-
+    plot.show()
+    
 #Has delay_dist=False set
 fit = PyROA.Fit(output_dir,qname,fltrs,priors,add_var=True,init_tau=init_tau,Nsamples=10000, Nburnin=5000)
