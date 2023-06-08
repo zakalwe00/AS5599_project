@@ -17,15 +17,17 @@ AGN_NAMES = [ agn.name for agn in os.scandir(PROJECTDIR) if agn.is_dir()
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("-a", "--agn", type=str,
-                        default=None, help="AGN to run analysis pipeline \
-                        for in order to determine metrics",
+    parser.add_argument("agn", type=str,
+                        help="AGN to run analysis pipeline for in order to determine metrics",
                         choices=AGN_NAMES)
     parser.add_argument("-c", "--calibrate", action='store_true',
                         default=None,
                         help="Calibrate LCO lightcurve data")
+    parser.add_argument("-cp", "--calibration-plot", action='store_true',
+                        default=False,
+                        help="Include a calibration corner plot in the output")
     parser.add_argument("-ccp", "--calibration-corner-plot", action='store_true',
-                        default=None,
+                        default=False,
                         help="Include a calibration corner plot in the output")
 
     args=parser.parse_args()
@@ -39,7 +41,8 @@ if __name__ == "__main__":
         for fltr in model.fltrs():
             print('Running PyROA InterCalibrate for {} filter {}'.format(args.agn, fltr))
             model.InterCalibrateFilt(fltr)
-            model.InterCalibrateFiltPlot(fltr,args.calibration_corner_plot)
+            if args.calibration_plot:
+                model.InterCalibrateFiltPlot(fltr,args.calibration_corner_plot)
     
             
         

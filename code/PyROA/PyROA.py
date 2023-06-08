@@ -13,11 +13,7 @@ import matplotlib.pyplot as plt
 
 class LCModel():
 
-    # The priors are for the extra error parameter and delta,
-    # which are uniform where the limits must be specified in the following way:
-    # priors = [[delta_lower, delta_upper], [sig_lower, sig_upper]]
-    def __init__(self, root_dir, agn_name, init_delta=1.0, sig_level = 4.0,
-                 Nsamples=15000, Nburnin=10000,priors=[[0.01, 10.0], [0.0, 2.0]]):
+    def __init__(self, root_dir, agn_name):
 
         # manage lightcurve (LCO) data, check available scope and filters
         output_dir = '{}/{}/output'.format(root_dir,agn_name)
@@ -29,20 +25,17 @@ class LCModel():
         self._agn_name   = agn_name
         self._fltrs      = fltrs
         self._scopes     = scopes
-        
-        self._priors     = priors
-        self._init_delta = init_delta
-        self._sig_level  = sig_level
-        self._nsamples   = Nsamples
-        self._nburnin    = Nburnin
-
 
     def output_dir(self): return self._output_dir
     def agn_name(self): return self._agn_name
     def fltrs(self): return self._fltrs
     def scopes(self): return self._scopes
         
-    def InterCalibrateFilt(self,fltr):
+    # The calibration priors are for the extra error parameter and delta,
+    # which are uniform where the limits must be specified in the following way:
+    # priors = [[delta_lower, delta_upper], [sig_lower, sig_upper]]
+    def InterCalibrateFilt(self,fltr,init_delta=1.0,sig_level = 4.0,
+                           Nsamples=15000, Nburnin=10000,priors=[[0.01, 10.0], [0.0, 2.0]]):
 
         scopes_array = []
         data=[]
@@ -85,7 +78,7 @@ class LCModel():
             labels_chunks[i][1] = "B"+str(i+1)        
             labels_chunks[i][2] = "\u03C3"+str(i+1)                
         
-        pos_chunks[-1][0] = self._init_delta          #Initial delta
+        pos_chunks[-1][0] = init_delta          #Initial delta
         labels_chunks[-1][0] = "\u0394"
         #Store initial values for use in prior
         init_params_chunks = pos_chunks
@@ -104,13 +97,13 @@ class LCModel():
         with Pool() as pool:
 
             sampler = emcee.EnsembleSampler(nwalkers, ndim, PUtils.log_probability_calib, 
-                                            args=(data, self._priors, self._sig_level, init_params_chunks), pool=pool)
-            sampler.run_mcmc(pos, self._nsamples, progress=True);
+                                            args=(data, priors, sig_level, init_params_chunks), pool=pool)
+            sampler.run_mcmc(pos, Nsamples, progress=True);
 
         raise Exception('no further')
 
         #Extract samples with burn-in of 1000
-        samples_flat = sampler.get_chain(discard=_self.nburnin, thin=15, flat=True)
+        samples_flat = sampler.get_chain(discard=Nburnin, thin=15, flat=True)
                 
         samples = sampler.get_chain()
                 
@@ -188,7 +181,7 @@ class LCModel():
             model = interp(mjd)
                 
             #Sigma Clipping
-            mask = (abs(model - flux) < self._sig_level*err)
+            mask = (abs(model - flux) < sig_level*err)
         
             #Shift by parameters
             flux = (flux - B)/A          
@@ -203,8 +196,8 @@ class LCModel():
             for j in range(len(mjd)):
                 Calibrated_mjd.append(mjd[j])
                 Calibrated_flux.append(flux[j])
-                if (abs(model[j] - flux[j]) > self._sig_level*err[j]):
-                    Calibrated_err.append((abs(model[j] - flux[j])/self._sig_level))
+                if (abs(model[j] - flux[j]) > sig_level*err[j]):
+                    Calibrated_err.append((abs(model[j] - flux[j])/sig_level))
                 else:
                     Calibrated_err.append(err[j])
                 
@@ -289,3 +282,83 @@ class LCModel():
                 plt.close();
            
         return
+
+    def Fit(self, exclude_filters, init_tau = None, init_delta=1.0,
+            delay_dist=False , psi_types = None, add_var=True, sig_level = 4.0, 
+            Nsamples=10000, Nburnin=5000, include_slow_comp=False, slow_comp_delta=30.0, 
+            delay_ref = None, calc_P=False, AccDisc=False, wavelengths=None, 
+            use_backend = False, resume_progress = False, plot_corner=False):
+        data=[]
+        for fltr in self._fltrs:
+            calib_file = '{}/{}_{}.dat'.format(self._output_dir,self._agn_name,fltr)
+            data.append(np.loadtxt(calib_file))
+
+        self.priors= priors
+        self.init_tau = init_tau
+        self.init_delta=init_delta
+        
+       # if (add_var == True):
+          #  self.add_var = [True]*len(filters)
+       # elif (add_var == False):
+         #   self.add_var = [False]*len(filters)
+     #   else:
+        self.add_var = add_var
+            
+            
+        self.delay_dist = delay_dist
+        if (delay_dist==True):
+            self.psi_types = psi_types
+            if (psi_types==None):
+                self.psi_types = ["Gaussian"]*len(filters)
+            else:
+                self.psi_types = np.insert(psi_types, [0], psi_types[0])
+        else:
+            self.psi_types = [None]*len(filters)
+        
+        self.sig_level = sig_level
+        self.Nsamples = Nsamples
+        self.Nburnin = Nburnin
+        
+        if (delay_ref == None):
+            self.delay_ref = filters[0]
+        else:
+            self.delay_ref = delay_ref
+        self.delay_ref_pos = np.where(np.array(filters) == self.delay_ref)[0]
+        if (init_tau == None):
+            self.init_tau = [0]*len(data)
+            if (delay_dist == True):
+                self.init_tau = [1.0]*len(data)
+            if (AccDisc == True):
+                self.init_tau = 5.0*(((np.array(wavelengths)/wavelengths[0]))**1.4)
+        else:
+            Nchunk = 3
+            if (self.add_var == True):
+                Nchunk +=1
+            if (self.delay_dist == True):
+                Nchunk+=1
+        
+            self.init_tau = np.insert(init_tau, self.delay_ref_pos, 0.0)
+            
+        self.include_slow_comp=include_slow_comp
+        self.slow_comp_delta=slow_comp_delta
+        
+        self.calc_P=calc_P
+        self.AccDisc = AccDisc
+        self.wavelengths = wavelengths
+        self.use_backend = use_backend
+        self.resume_progress = resume_progress
+        run = FullFit(data, self.priors, self.init_tau, self.init_delta, self.add_var, 
+                      self.sig_level, self.Nsamples, self.Nburnin, self.include_slow_comp, 
+                      self.slow_comp_delta, self.calc_P, self.delay_dist, self.psi_types, 
+                      self.delay_ref_pos, self.AccDisc, self.wavelengths, self.filters, 
+                      self.use_backend, self.resume_progress,plot_corner)
+
+        self.samples = run[0]
+        self.samples_flat = run[1]
+        self.t = run[2]
+        self.X = run[3]
+        self.X_errs = run[4]
+        if (self.include_slow_comp==True):
+            self.slow_comps=run[5]
+        self.params=run[6]
+        self.models = run[7]

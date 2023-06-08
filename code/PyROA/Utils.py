@@ -1,6 +1,7 @@
 import os
 import numpy as np
 import pandas as pd
+import scipy
 from numba import jit
 from numba import prange
 
@@ -183,7 +184,7 @@ def log_likelihood_calib(params, data, sig_level):
         m_scaled = A*(m) + B        
          
         #Model
-        interp = interpolate.interp1d(t, m_scaled, kind="linear", fill_value="extrapolate")
+        interp = scipy.interpolate.interp1d(t, m_scaled, kind="linear", fill_value="extrapolate")
         model = interp(mjd)
         chi2 = np.empty(len(mjd))
         ex_term = np.empty(len(mjd))  
