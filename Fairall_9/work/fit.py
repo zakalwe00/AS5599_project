@@ -9,8 +9,8 @@ import matplotlib.pyplot as plt
 import PyROA
 import csv
 
-# Set Seyfert 1 Galaxy name in this case (will be argument to this script?)
-qname = 'NGC_6814'
+# Set AGN name in this case
+qname = 'Fairall_9'
 
 output_dir = '{}/../output/'.format(os.getcwd())
             
