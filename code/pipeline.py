@@ -1,19 +1,19 @@
 #!/minthome/hcornfield/.local/bin/python
 
-import os,re,argparse,datetime
+import os,re,argparse
 import pandas as pd
 import numpy as np
 import PyROA
 
-# setup global variables for use in the data pipeline
-
+# setup global variables for use in the data pipeline (these can be overridden in environment)
 PROJECTDIR = os.environ.get('PROJECTDIR','/minthome/hcornfield/git/AS5599_project')
-currentdatetime = datetime.datetime.now()
-yyyymmdd = currentdatetime.strftime('%Y%m%d_%H%M%S')
+#json files for project configuration
+CONFIGDIR = os.environ.get('CONFIGDIR','/minthome/hcornfield/git/AS5599_project/config')
+
 
 # objects we have data for are all subdirs of the project dir, removing the code dir
 AGN_NAMES = [ agn.name for agn in os.scandir(PROJECTDIR) if agn.is_dir()
-              and agn.name != 'code' and agn.name[0] != '.']
+              and agn.name not in ['code','config'] and agn.name[0] != '.']
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -33,13 +33,12 @@ if __name__ == "__main__":
     args=parser.parse_args()
 
     # Create lightcurve model for this AGN
-    model = PyROA.LCModel(PROJECTDIR,args.agn)
+    model = PyROA.AGNLCModel(PROJECTDIR,CONFIGDIR,args.agn)
 
     # Calibrate LCO data if necessary
     if args.calibrate:
 
-        for fltr in model.fltrs():
-            print('Running PyROA InterCalibrate for {} filter {}'.format(args.agn, fltr))
+        for fltr in model.config().fltrs():
             model.InterCalibrateFilt(fltr)
             if args.calibration_plot:
                 model.InterCalibrateFiltPlot(fltr,args.calibration_corner_plot)

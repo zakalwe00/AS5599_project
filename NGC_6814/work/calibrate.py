@@ -8,9 +8,12 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import PyROA
 
-# Set Seyfert 1 Galaxy name in this case (will be argument to this script?)
+# Set AGN name in this case (will be argument to this script?)
 qname = 'NGC_6814'
 obs_file = ''
+
+MAX_FLUX = 1e4
+MAX_FLUX_ERR = 1e2
 
 # Load Las Cumbres Observatory data for this object from AVA https://www.alymantara.com/ava/
 
@@ -40,7 +43,14 @@ for scope in scopes:
             except KeyError:
                 print('Filter {} not found for telescope {}'.format(fltr, scope))
                 continue
-            
+            bad_values = np.logical_or(np.logical_or(obs_scope_fltr['Flux'] > MAX_FLUX,
+                                                     obs_scope_fltr['Flux'] < 0.0),
+                                       np.logical_or(obs_scope_fltr['Error'] > MAX_FLUX_ERR,
+                                                     obs_scope_fltr['Error'] < 0.0))
+            if np.sum(bad_values):
+                print('Throw out bad observations for telescope {} filter {}:\n{}'.format(scope,fltr,obs_scope_fltr[bad_values]))
+                obs_scope_fltr = obs_scope_fltr[bad_values==False]
+
             obs_scope_fltr.to_csv(output_fn, sep=' ', index=False, header=False)
         
 # From PyROA project Inter-calibration example, now

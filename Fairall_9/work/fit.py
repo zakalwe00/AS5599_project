@@ -4,9 +4,9 @@ import os, re
 import pandas as pd
 #import numpy as np
 import matplotlib
-matplotlib.use('Agg')
+#matplotlib.use('Agg')
 import matplotlib.pyplot as plt
-import PyROA
+#import PyROA
 import csv
 
 # Set AGN name in this case
@@ -17,7 +17,7 @@ output_dir = '{}/../output/'.format(os.getcwd())
 #Only fit a subsection of lightcurves- those available from calibration
 #'g' filter is suggested as having highest signal-to-noise (from paper) https://arxiv.org/pdf/2302.09370.pdf
 #and first filter is taken as delay reference time
-fltrs=['g','B','i']
+fltrs=['g','B','i','V']
 
 #set this to a reasonable guess to improve 'burn-in' time
 init_tau = [5.0, 10.0]
@@ -53,6 +53,7 @@ if os.path.exists(calib_curve_plot) == False:
     axs[-1].set_xlabel('Time (days, MJD)')
 
     plt.savefig(calib_curve_plot)
+    plt.show()
 
 #Has delay_dist=False set
 #fit = PyROA.Fit(output_dir,qname,fltrs,priors,add_var=True,init_tau=init_tau,Nsamples=10000, Nburnin=5000)

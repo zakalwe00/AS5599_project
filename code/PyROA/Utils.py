@@ -261,25 +261,28 @@ def log_probability_calib(params, data, priors, sig_level, init_params_chunks):
         return -np.inf
     return lp + log_likelihood_calib(params, data, sig_level)
 
-def check_and_create_dir(check_dir):
-    if os.path.exists(check_dir) and os.path.isfile(check_dir):
-        # directory exists but its a file
-        os.remove(check_dir)
-    if os.path.exists(check_dir) == False:
-        print('Creating directory {}'.format(check_dir))
-        os.mkdir(check_dir)
-    return
-        
-def load_lco_lightcurves(root_dir,agn):
-    # Load Las Cumbres Observatory data sourced from AVA https://www.alymantara.com/ava/
-    # if available from the root project directory for this AGN
-    lco_lc_file = '{}/{}/LCO/AVA_{}_lco.csv'.format(root_dir,agn,agn)
-    if os.path.isfile(lco_lc_file) == False:
-        raise Exception('LCO lightcurve does not exist in {}'.format(lco_lc_file))
-    print('Found LCO lightcurve file {}'.format(lco_lc_file))
-    return lco_lc_file
+# Check that the passed file location contains a file
+def check_file(cfile):
+    exists = os.path.exists(cfile)
+    if exists and os.path.isfile(cfile) == False:
+        raise Exception('Location {} is not a file (as expected)'.format(cfile))
+    return exists
 
-def write_scope_filter_data(agn,obs_file, output_dir):
+# Check that the passed file location contains a directory
+def check_dir(cdir):
+    exists = os.path.exists(cdir)
+    if exists and os.path.isfile(cdir):
+        raise Exception('Location {} is not a directory (as expected)'.format(cdir))
+    return exists
+                        
+def check_and_create_dir(cdir):
+    if check_dir(cdir) == False:
+        print('Creating directory {}'.format(cdir))
+        os.mkdir(cdir)
+    return
+
+
+def write_scope_filter_data(config,obs_file):
     # split LCO file data for this AGN into records by telescope/filter (spectral band)
     obs = pd.read_csv(obs_file)
     scopes = np.unique(obs.Tel)
@@ -290,7 +293,7 @@ def write_scope_filter_data(agn,obs_file, output_dir):
     # prepare data file per telescope/filter if not already done
     for scope in scopes:
         for fltr in fltrs:
-            output_fn = '{}/{}_{}_{}.dat'.format(output_dir, agn, fltr, scope)
+            output_fn = '{}/{}_{}_{}.dat'.format(config.output_dir(), config.agn_name(), fltr, scope)
             if os.path.exists(output_fn) == False:
                 # Select time/flux/error per scope and filter
                 obs_scope = obs[obs['Tel'] == scope]
@@ -301,5 +304,9 @@ def write_scope_filter_data(agn,obs_file, output_dir):
                     continue
                 print('Writing file {}'.format(output_fn))
                 obs_scope_fltr.to_csv(output_fn, sep=' ', index=False, header=False)
-    return fltrs,scopes
+
+    config.set_fltrs(fltrs)
+    config.set_scopes(scopes)
+
+    return
 
