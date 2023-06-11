@@ -12,9 +12,12 @@ __pycache__/
 # Log files
 *.log
 
-# Data files
+# Data and temporary file output
 *.dat
 *.err
+*.old
+*tmp/
+*/tmp/*
 
 # CSV files
 *.csv

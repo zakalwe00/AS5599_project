@@ -278,9 +278,8 @@ def check_dir(cdir):
 def check_and_create_dir(cdir):
     if check_dir(cdir) == False:
         print('Creating directory {}'.format(cdir))
-        os.mkdir(cdir)
+        os.makedirs(cdir)
     return
-
 
 def write_scope_filter_data(config,obs_file):
     # split LCO file data for this AGN into records by telescope/filter (spectral band)
