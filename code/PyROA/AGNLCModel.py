@@ -22,13 +22,27 @@ class AGNLCModelConfig():
         if Utils.check_file(global_config_file) == False:
             raise Exception('Unable to configure AGN lightcurve model, {} does not exist'.format(global_config_file))
 
-        # Take parameters from global config file and override with AGN-specific settings
+        # Take parameters from global config file and override with AGN object-specific settings
         with open(global_config_file, "r") as fd:
             params = json.load(fd)
+        self._data_params = params.get('data',{})
+        self._observation_params = params.get('observation',{})
+        self._calibration_params = params.get('calibration',{})
+        self._ccf_params = params.get('ccf',{})
+
+        #override with any object-specific parameters
         object_config_file = '{}/{}.json'.format(CONFIGDIR,agn_name)
         if Utils.check_file(object_config_file):
             with open(object_config_file, "r") as fd:
-                params.update(json.load(fd))
+                object_params = json.load(fd)
+                if 'data' in object_params:
+                    self._data_params.update(object_params['data'])
+                if 'observation' in object_params:
+                    self._observation_params.update(object_params['observation'])
+                if 'calibration' in object_params:
+                    self._calibration_params.update(object_params['calibration'])
+                if 'ccf' in object_params:
+                    self._ccf_params.update(object_params['ccf'])
 
         self._agn_name = agn_name
         self._root_dir = '{}/{}'.format(PROJECTDIR,agn_name)
@@ -37,8 +51,6 @@ class AGNLCModelConfig():
         self._tmp_dir = '{}/{}/output/tmp/{}'.format(PROJECTDIR,agn_name,
                                                      datetime.datetime.now().strftime('%Y%m%d_%H%M%S'))
 
-        self._data_params = params['data']
-        self._calibration_params = params['calibration']
 
         # may want to override these arrays in the config
         self._fltrs      = []
@@ -53,6 +65,8 @@ class AGNLCModelConfig():
     def scopes(self): return self._scopes
     def data_params(self): return self._data_params
     def calibration_params(self): return self._calibration_params
+    def observation_params(self): return self._observation_params
+    def ccf_params(self): return self._ccf_params
 
     def set_scopes(self, scopes): self._scopes = scopes
     def set_fltrs(self, fltrs): self._fltrs = fltrs

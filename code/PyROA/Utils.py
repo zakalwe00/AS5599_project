@@ -261,6 +261,23 @@ def log_probability_calib(params, data, priors, sig_level, init_params_chunks):
         return -np.inf
     return lp + log_likelihood_calib(params, data, sig_level)
 
+########################################
+# Maths Operations                     #
+########################################
+
+# Take and array of observation times and estimate the median cadance,
+# rejecting any observations less than 2.5 hours apart (default setting) as these are
+# likely to be part of the same observing run
+def median_cadence(mjds, min_sep=2.5):
+    min_sep_day_frac = 2.5/24.0
+    diffs = mjds[1:] - mjds[:-1]
+    diffs = diffs[diffs > min_sep_day_frac]
+    return np.median(diffs)
+
+########################################
+# File Operations                      #
+########################################
+
 # Check that the passed file location contains a file
 def check_file(cfile):
     exists = os.path.exists(cfile)
@@ -283,7 +300,7 @@ def check_and_create_dir(cdir):
 
 def write_scope_filter_data(config,obs_file):
     # split LCO file data for this AGN into records by telescope/filter (spectral band)
-    obs = pd.read_csv(obs_file)
+    obs = pd.read_csv(obs_file).sort_values('MJD')
     scopes = np.unique(obs.Tel)
     print('Found telescope list {}'.format(','.join(scopes)))
     fltrs = np.unique(obs.Filter)

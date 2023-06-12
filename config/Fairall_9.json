@@ -17,8 +17,7 @@
 		"mjd_range": [59700,60004]
 	    },
 	    "May2023-Current": {
-		"mjd_range": [60065,60166],
-		"med_cadance": 0.5
+		"mjd_range": [60065,60166]
 	    }
 	}
     }

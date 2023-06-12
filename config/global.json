@@ -16,5 +16,8 @@
         "sig_level": 4.0,
         "Nsamples": 15000,
         "Nburnin": 10000
+    },
+    "ccf": {
+	"Niter": 500
     }
 }

@@ -220,7 +220,7 @@ def InterCalibrateFilt(model,fltr):
         'f4':Porc,
         'f5':interpmodel_j1,
         'f6':error_j1
-    })
+    }).sort_values('f1')
     df.to_csv(output_file,
               header=False,sep=' ',float_format='%25.15e',index=False,
               quoting=csv.QUOTE_NONE,escapechar=' ')
@@ -228,7 +228,7 @@ def InterCalibrateFilt(model,fltr):
 
 def InterCalibrateFiltPlot(model,fltr):
 
-    calib_file = '{}/{}_{}.dat'.format(model.output_dir(),model.agn_name(),fltr)
+    calib_file = '{}/{}_{}.dat'.format(config.output_dir(),config.agn_name(),fltr)
     
     if os.path.exists(calib_file) == True:
         df = pd.read_csv(calib_file,

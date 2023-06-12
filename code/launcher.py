@@ -18,7 +18,7 @@ AGN_NAMES = [ agn.name for agn in os.scandir(PROJECTDIR) if agn.is_dir()
 FUNCTION_MAPPING = { 'calibrate': PyROA.InterCalibrateFilt,
                      'calibrate_plot': PyROA.InterCalibrateFiltPlot,
                      'fit': PyROA.Fit,
-                    'cross_correlation': PyROA.PyCCF }
+                     'ccf': PyROA.PyCCF }
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -36,7 +36,7 @@ Available functions are {}".format(','.join([xx for xx in FUNCTION_MAPPING.keys(
     function_args = []
     if len(fargs) == 2:
         function_args = fargs[1].split(',')
-    elif len(fargs > 2):
+    elif len(fargs) > 2:
         raise Exception('Unexpected format for function argument {}'.format(args.function))
 
     # Create lightcurve model for this AGN
