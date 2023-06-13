@@ -239,8 +239,10 @@ def log_prior_calib(params, priors, s, init_params_chunks):
         B_prior_width=0.5 # mJy
         lnA_prior_width=0.02 # 0.02 = 2%
         
-        A_prior.append(-2.0*np.log(lnA_prior_width*A*np.sqrt(2.0*np.pi)) - (np.log(A)/lnA_prior_width)**2.0)
-        B_prior.append(2.0*np.log((1.0/np.sqrt(2.0*np.pi*(B_prior_width**2)))*np.exp(-0.5*(B/B_prior_width)**2)))
+#        A_prior.append(-2.0*np.log(lnA_prior_width*A*np.sqrt(2.0*np.pi)) - (np.log(A)/lnA_prior_width)**2.0)
+        A_prior.append(-2.0*np.log(lnA_prior_width*np.sqrt(2.0*np.pi)) - (np.log(A)/lnA_prior_width)**2.0)
+#        B_prior.append(2.0*np.log((1.0/np.sqrt(2.0*np.pi)*(B_prior_width**2)))*np.exp(-0.5*(B/B_prior_width)**2)))
+        B_prior.append(-2.0*np.log(B_prior_width*np.sqrt(2.0*np.pi)) - (B/B_prior_width)**2)
         
         if sig_prior[0] < sig < sig_prior[1]:
             check.append(0.0)
@@ -302,9 +304,9 @@ def write_scope_filter_data(config,obs_file):
     # split LCO file data for this AGN into records by telescope/filter (spectral band)
     obs = pd.read_csv(obs_file).sort_values('MJD')
     scopes = np.unique(obs.Tel)
-    print('Found telescope list {}'.format(','.join(scopes)))
+    #print('Found telescope list {}'.format(','.join(scopes)))
     fltrs = np.unique(obs.Filter)
-    print('Found filter list {}'.format(','.join(fltrs)))
+    #print('Found filter list {}'.format(','.join(fltrs)))
 
     # prepare data file per telescope/filter if not already done
     for scope in scopes:

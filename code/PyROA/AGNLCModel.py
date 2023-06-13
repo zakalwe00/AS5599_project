@@ -48,8 +48,6 @@ class AGNLCModelConfig():
         self._root_dir = '{}/{}'.format(PROJECTDIR,agn_name)
         self._output_dir = '{}/{}/output'.format(PROJECTDIR,agn_name)
         
-        self._tmp_dir = '{}/{}/output/tmp/{}'.format(PROJECTDIR,agn_name,
-                                                     datetime.datetime.now().strftime('%Y%m%d_%H%M%S'))
 
 
         # may want to override these arrays in the config
@@ -60,17 +58,18 @@ class AGNLCModelConfig():
     def agn_name(self): return self._agn_name
     def root_dir(self): return self._root_dir
     def output_dir(self): return self._output_dir
-    def tmp_dir(self): return self._tmp_dir
     def fltrs(self): return self._fltrs
     def scopes(self): return self._scopes
     def data_params(self): return self._data_params
     def calibration_params(self): return self._calibration_params
     def observation_params(self): return self._observation_params
-    def ccf_params(self): return self._ccf_params
-
+    def ccf_params(self): return self._ccf_params    
+    def tmp_dir(self):
+        return '{}/output/tmp/{}'.format(self._root_dir,datetime.datetime.now().strftime('%Y%m%d_%H%M%S'))
     def set_scopes(self, scopes): self._scopes = scopes
     def set_fltrs(self, fltrs): self._fltrs = fltrs
-
+        
+    
 # Model holds configuration parameters and runs lightcurve analysis functions
 class AGNLCModel():
     
@@ -78,14 +77,13 @@ class AGNLCModel():
         self._config = AGNLCModelConfig(PROJECTDIR, CONFIGDIR, agn_name)
         
         Utils.check_and_create_dir(self.config().output_dir())
-        Utils.check_and_create_dir(self.config().tmp_dir())
         
         # Load local copy of Las Cumbres Observatory data sourced from AVA https://www.alymantara.com/ava/
         # (if available for this AGN)
         lco_lc_file = '{0}/{1}/LCO/AVA_{1}_lco.csv'.format(PROJECTDIR,agn_name)
         if Utils.check_file(lco_lc_file) == False:
             raise Exception('LCO lightcurve file {} does not exist for this AGN. Source this from https://www.alymantara.com/ava/'.format(lco_lc_file))
-        print('Found LCO lightcurve file {}'.format(lco_lc_file))
+        #print('Found LCO lightcurve file {}'.format(lco_lc_file))
 
         # Load data (perform basic sanity check, record available filters and scopes)
         Utils.write_scope_filter_data(self.config(),lco_lc_file)

@@ -16,7 +16,6 @@ AGN_NAMES = [ agn.name for agn in os.scandir(PROJECTDIR) if agn.is_dir()
               and agn.name not in ['code','config'] and agn.name[0] != '.']
 
 FUNCTION_MAPPING = { 'calibrate': PyROA.InterCalibrateFilt,
-                     'calibrate_plot': PyROA.InterCalibrateFiltPlot,
                      'fit': PyROA.Fit,
                      'ccf': PyROA.PyCCF }
 

@@ -34,8 +34,19 @@ def PyCCF(model,fltr1,fltr2):
     fltr2_all = pd.read_csv(calib_file2,header=None,index_col=None,
                             quoting=csv.QUOTE_NONE,delim_whitespace=True).sort_values(0)
 
+    sigma_limit = params['sigma_limit']
+    # Time lag range to consider in the CCF (days).
+    # Must be small enough that there is some overlap between light curves at that shift
+    # (i.e., if the light curves span 80 days, these values must be less than 80 days).
+    lag_range = params['lag_range']
+    
     # lag range of data considered by year
-    for period in params["periods"]:
+    for period in params["periods"]:        
+        centroidfile = '{}/Centroid_{}_{}_{}.dat'.format(config.output_dir(),period,fltr1,fltr2)
+        if Utils.check_file(centroidfile) == True:
+            print('Not running period {} {} vs {} calibration, file exists: {}'.format(period,fltr1,fltr2,centroidfile))
+            break
+            
         #########################################
         ##Set Interpolation settings, user-specified
         #########################################
@@ -43,25 +54,31 @@ def PyCCF(model,fltr1,fltr2):
         # from May to the following Feb
         mjd_range = params["periods"][period]["mjd_range"]
 
-        mjd1, flux1, err1 = [col for col in fltr1_all[np.logical_and(fltr1_all[0] > mjd_range[0],
-                                                                     fltr1_all[0] < mjd_range[1])].loc[:,0:2].to_numpy().T]
-        mjd2, flux2, err2 = [col for col in fltr2_all[np.logical_and(fltr2_all[0] > mjd_range[0],
-                                                                     fltr2_all[0] < mjd_range[1])].loc[:,0:2].to_numpy().T]
+        # filter data with sigma > sigma_limit * mean_err for this date range
+        fltr1_period = fltr1_all[np.logical_and(fltr1_all[0] > mjd_range[0],
+                                                fltr1_all[0] < mjd_range[1])].loc[:,0:2]
+        mean_err1 = np.mean(fltr1_period.loc[:,2])
+        mjd1,flux1,err1 = [col for col in fltr1_period[fltr1_period.loc[:,2] < mean_err1 * sigma_limit].T.to_numpy()]
+        fltr2_period = fltr2_all[np.logical_and(fltr2_all[0] > mjd_range[0],
+                                                fltr2_all[0] < mjd_range[1])].loc[:,0:2]
+        mean_err2 = np.mean(fltr2_period.loc[:,2])
+        mjd2,flux2,err2 = [col for col in fltr2_period[fltr2_period.loc[:,2] < mean_err2 * sigma_limit].T.to_numpy()]
 
-        print('Looking at observation period {}, {}+{} datapoints'.format(period, len(mjd1), len(mjd2)))
-
-        # Time lag range to consider in the CCF (days).
-        # Must be small enough that there is some overlap between light curves at that shift
-        # (i.e., if the light curves span 80 days, these values must be less than 80 days).
-        # Use 100 days unless overridden in parameters.
-        lag_range = params['periods'][period]['lag_range']
+        median_cad1 = Utils.median_cadence(mjd1)
+        median_cad2 = Utils.median_cadence(mjd2)
+        print('Obs {0}, {6}+{7}, {1}+{2} datapts after filter (err < {3}*{5} + {4}*{5}) med cadence {8}+{9}'.format(period,len(mjd1),len(mjd2),
+                                                                                                                    '{:.5f}'.format(mean_err1),
+                                                                                                                    '{:.5f}'.format(mean_err2),
+                                                                                                                    sigma_limit,fltr1,fltr2,
+                                                                                                                    '{:.3f}'.format(median_cad1),
+                                                                                                                    '{:.3f}'.format(median_cad2)))
         
         # Interpolation time step (days). Must be less than the average cadence of the observations, but too small will introduce noise.
         # Consider the lowest median from both curves and ound down to nearest 1/20 days.
         interp = params["periods"][period].get("med_cadence",
-                                                   np.minimum(np.floor(Utils.median_cadence(mjd1)*20.0)*0.05,
-                                                              np.floor(Utils.median_cadence(mjd2)*20.0)*0.05))
-        print('Using lag_range={} days, interp={} days'.format(lag_range,interp))
+                                                   np.minimum(np.floor(median_cad1*20.0)*0.05,
+                                                              np.floor(median_cad2*20.0)*0.05))
+        print('Using lag_range={} days, interp={} days'.format(lag_range,'{:.2f}'.format(interp)))
         
         nsim = params["Niter"]  #Number of Monte Carlo iterations for calculation of uncertainties
 
@@ -103,14 +120,9 @@ def PyCCF(model,fltr1,fltr2):
         #Write results out to a file in case we want them later.
         ##########################################
 
-        centroidfile = '{}/Centroid_{}_{}_{}.dat'.format(config.output_dir(),period,fltr1,fltr2)
-        tmpcentroidfile = '{}/Centroid_{}_{}_{}.dat'.format(config.tmp_dir(),period,fltr1,fltr2)
-
         peakfile = '{}/Peak_{}_{}_{}.dat'.format(config.output_dir(),period,fltr1,fltr2)
-        tmppeakfile = '{}/Peak_{}_{}_{}.dat'.format(config.tmp_dir(),period,fltr1,fltr2)
 
         ccffile = '{}/CCF_{}_{}_{}.dat'.format(config.output_dir(),period,fltr1,fltr2)
-        tmpccffile = '{}/CCF_{}_{}_{}.dat'.format(config.tmp_dir(),period,fltr1,fltr2)        
         
         df = pd.DataFrame({'centroid':tlags_centroid,
                            'peak':tlags_peak})
@@ -118,23 +130,14 @@ def PyCCF(model,fltr1,fltr2):
         df['centroid'].to_csv(centroidfile,
                               header=False,sep=' ',float_format='%25.15e',index=False,
                               quoting=csv.QUOTE_NONE,escapechar=' ')
-        df['centroid'].to_csv(tmpcentroidfile,
-                              header=False,sep=' ',float_format='%25.15e',index=False,
-                              quoting=csv.QUOTE_NONE,escapechar=' ')
         print('Writing {}'.format(peakfile))
         df['peak'].to_csv(peakfile,
-                              header=False,sep=' ',float_format='%25.15e',index=False,
-                              quoting=csv.QUOTE_NONE,escapechar=' ')
-        df['peak'].to_csv(tmppeakfile,
                               header=False,sep=' ',float_format='%25.15e',index=False,
                               quoting=csv.QUOTE_NONE,escapechar=' ')
         df = pd.DataFrame({'lag':lag,
                            'r':r})
         print('Writing {}'.format(ccffile))
         df.to_csv(ccffile,
-                  header=False,sep=' ',float_format='%25.15e',index=False,
-                  quoting=csv.QUOTE_NONE,escapechar=' ')
-        df.to_csv(tmpccffile,
                   header=False,sep=' ',float_format='%25.15e',index=False,
                   quoting=csv.QUOTE_NONE,escapechar=' ')
         

@@ -2,15 +2,11 @@
     "observation": {
         "periods": {
 	    "Aug2022-Dec2022": {
-		"mjd_range": [58792,59945],
-		"lag_range": [-100.0,100.0]
+		"mjd_range": [58792,59945]
 	    },
 	    "Mar2023-Current": {
-		"mjd_range": [60004,60166],
-		"lag_range": [-100.0,100.0]
+		"mjd_range": [60004,60166]
 	    }
 	}
-    },
-    "ccf": {
     }
 }

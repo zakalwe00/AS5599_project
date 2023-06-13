@@ -3,15 +3,17 @@ import PyROA.Utils as Utils
 from multiprocessing import Pool
 from itertools import chain
 from tabulate import tabulate
+import corner
 import numpy as np
 import pandas as pd
+import csv
 import emcee
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
 def InterCalibrateFilt(model,fltr):
-    print('Running PyROA InterCalibrate for filter {}'.format(fltr))
+    print('Running PyROA InterCalibrateFilt for filter {}'.format(fltr))
 
     # references for convenience
     config = model.config()
@@ -40,13 +42,7 @@ def InterCalibrateFilt(model,fltr):
 
     ########################################################################################    
     # No calibration data for this filter exists
-    ########################################################################################
-    # Before running make a copy of the configuration you are using
-    tmp_params_file = '{}/calibration.json'.format(config.tmp_dir())
-    print('Backup calibration params to {}'.format(tmp_params_file))
-    with open(tmp_params_file, 'w', encoding='utf-8') as fd:
-        json.dump(params, fd, ensure_ascii=False, indent=4)
-        
+    ########################################################################################        
     # Run MCMC to fit to data
     Npar = 3*len(data) + 1
     
@@ -84,15 +80,13 @@ def InterCalibrateFilt(model,fltr):
     print("NWalkers="+str(int(2.0*Npar)))
     nwalkers, ndim = pos.shape
 
-    assert(False)
-    # not using this yet
-    with Pool(5) as pool:
-
+    # 12 threads works if 12 virtual cores available
+    # Reduce memory usage -> 6 threads 2023/06/13
+    with Pool(6) as pool:
         sampler = emcee.EnsembleSampler(nwalkers, ndim, Utils.log_probability_calib, 
                                         args=(data, [params['delta_prior'], params['sigma_prior']],
                                               params['sig_level'], init_params_chunks), pool=pool)
         sampler.run_mcmc(pos, params['Nsamples'], progress=True);
-
 
     #Extract samples with burn-in of 10000 (default setting, see global.json)
     samples_flat = sampler.get_chain(discard=params['Nburnin'], thin=15, flat=True)
@@ -224,10 +218,8 @@ def InterCalibrateFilt(model,fltr):
     df.to_csv(output_file,
               header=False,sep=' ',float_format='%25.15e',index=False,
               quoting=csv.QUOTE_NONE,escapechar=' ')
-    return
 
-def InterCalibrateFiltPlot(model,fltr):
-
+    # read calibration file which should now exist
     calib_file = '{}/{}_{}.dat'.format(config.output_dir(),config.agn_name(),fltr)
     
     if os.path.exists(calib_file) == True:
@@ -235,7 +227,7 @@ def InterCalibrateFiltPlot(model,fltr):
                          header=None,index_col=None,
                          quoting=csv.QUOTE_NONE,delim_whitespace=True)
 
-        output_file = '{}/{}_Calibration_Plot.pdf'.format(model.output_dir(),fltr)
+        output_file = '{}/{}_Calibration_Plot.pdf'.format(config.output_dir(),fltr)
         if os.path.exists(output_file) == False:
             
             plt.rcParams.update({
@@ -262,9 +254,9 @@ def InterCalibrateFiltPlot(model,fltr):
             plt.savefig(output_file)
             plt.close()
 
-        output_file = '{}/{}_Calibration_CornerPlot.pdf'.format(model.output_dir(),fltr)
+        output_file = '{}/{}_Calibration_CornerPlot.pdf'.format(config.output_dir(),fltr)
             
-        if os.path.exists(output_file) == False and  plot_corner == True:
+        if os.path.exists(output_file) == False:
             plt.rcParams.update({'font.size': 15})
             #Save Cornerplot to figure
             fig = corner.corner(samples_flat, labels=labels, quantiles=[0.16, 0.5, 0.84], show_titles=True,

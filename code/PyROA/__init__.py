@@ -5,7 +5,7 @@ from .Utils import log_probability_calib, median_cadence, check_file, check_dir,
 
 from .AGNLCModel import AGNLCModelConfig, AGNLCModel
 
-from .PyROA import InterCalibrateFilt, InterCalibrateFiltPlot, Fit
+from .PyROA import InterCalibrateFilt, Fit
 
 from .PyCCF import PyCCF
 
