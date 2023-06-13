@@ -54,27 +54,27 @@ def PyCCF(model,fltr1,fltr2):
         # from May to the following Feb
         mjd_range = params["periods"][period]["mjd_range"]
 
-        # filter data with sigma > sigma_limit * mean_err for this date range
+        # filter data with sigma > sigma_limit * median_err for this date range
         fltr1_period = fltr1_all[np.logical_and(fltr1_all[0] > mjd_range[0],
                                                 fltr1_all[0] < mjd_range[1])].loc[:,0:2]
-        mean_err1 = np.mean(fltr1_period.loc[:,2])
-        mjd1,flux1,err1 = [col for col in fltr1_period[fltr1_period.loc[:,2] < mean_err1 * sigma_limit].T.to_numpy()]
+        median_err1 = np.median(fltr1_period.loc[:,2])
+        mjd1,flux1,err1 = [col for col in fltr1_period[fltr1_period.loc[:,2] < median_err1 * sigma_limit].T.to_numpy()]
         fltr2_period = fltr2_all[np.logical_and(fltr2_all[0] > mjd_range[0],
                                                 fltr2_all[0] < mjd_range[1])].loc[:,0:2]
-        mean_err2 = np.mean(fltr2_period.loc[:,2])
-        mjd2,flux2,err2 = [col for col in fltr2_period[fltr2_period.loc[:,2] < mean_err2 * sigma_limit].T.to_numpy()]
+        median_err2 = np.median(fltr2_period.loc[:,2])
+        mjd2,flux2,err2 = [col for col in fltr2_period[fltr2_period.loc[:,2] < median_err2 * sigma_limit].T.to_numpy()]
 
         median_cad1 = Utils.median_cadence(mjd1)
         median_cad2 = Utils.median_cadence(mjd2)
         print('Obs {0}, {6}+{7}, {1}+{2} datapts after filter (err < {3}*{5} + {4}*{5}) med cadence {8}+{9}'.format(period,len(mjd1),len(mjd2),
-                                                                                                                    '{:.5f}'.format(mean_err1),
-                                                                                                                    '{:.5f}'.format(mean_err2),
+                                                                                                                    '{:.5f}'.format(median_err1),
+                                                                                                                    '{:.5f}'.format(median_err2),
                                                                                                                     sigma_limit,fltr1,fltr2,
                                                                                                                     '{:.3f}'.format(median_cad1),
                                                                                                                     '{:.3f}'.format(median_cad2)))
-        
+
         # Interpolation time step (days). Must be less than the average cadence of the observations, but too small will introduce noise.
-        # Consider the lowest median from both curves and ound down to nearest 1/20 days.
+        # Consider the lowest median from both curves and round down to nearest 1/20 days.
         interp = params["periods"][period].get("med_cadence",
                                                    np.minimum(np.floor(median_cad1*20.0)*0.05,
                                                               np.floor(median_cad2*20.0)*0.05))
@@ -154,35 +154,30 @@ def PyCCF(model,fltr1,fltr2):
         ax1_2 = fig.add_subplot(3, 1, 2, sharex = ax1)
         ax1_2.errorbar(mjd2, flux2, yerr = err2, marker = '.', linestyle = 'dotted', color = 'k', label = 'Filter band {}'.format(fltr2))
 
-        ax1.text(0.025, 0.825, fltr1, fontsize = 15, transform = ax1.transAxes)
-        ax1_2.text(0.025, 0.825, fltr2, fontsize = 15, transform = ax1_2.transAxes)
-        ax1.set_ylabel('LC 1 Flux')
-        ax1_2.set_ylabel('LC 2 Flux')
+        ax1.text(0.025, 0.825, fltr1, fontsize = 15, transform = ax1.transAxes, color="red")
+        ax1_2.text(0.025, 0.825, fltr2, fontsize = 15, transform = ax1_2.transAxes, color="red")
+        ax1.set_ylabel('Flux')
+        ax1_2.set_ylabel('Flux')
         ax1_2.set_xlabel('MJD')
 
         #Plot CCF Information
-        xmin, xmax = -99, 99
         ax2 = fig.add_subplot(3, 3, 7)
         ax2.set_ylabel('CCF r')
         ax2.text(0.2, 0.85, 'CCF ', horizontalalignment = 'center', verticalalignment = 'center', transform = ax2.transAxes, fontsize = 16)
-        ax2.set_xlim(xmin, xmax)
-        ax2.set_ylim(-1.0, 1.0)
+        ax2.set_ylim(-0.2, 1.0)
         ax2.plot(lag, r, color = 'k')
         
-        ax3 = fig.add_subplot(3, 3, 8, sharex = ax2)
-        ax3.set_xlim(xmin, xmax)
+        ax3 = fig.add_subplot(3, 3, 8)
         ax3.axes.get_yaxis().set_ticks([])
         ax3.set_xlabel('Centroid Lag: %5.1f (+%5.1f -%5.1f) days'%(centau, centau_uperr, centau_loerr), fontsize = 15) 
-        ax3.text(0.2, 0.85, 'CCCD ', horizontalalignment = 'center', verticalalignment = 'center', transform = ax3.transAxes, fontsize = 16)
+        ax3.text(0.4, 0.85, 'CCCD ', horizontalalignment = 'center', verticalalignment = 'center', transform = ax3.transAxes, fontsize = 16)
         n, bins, etc = ax3.hist(tlags_centroid, bins = 50, color = 'b')
 
-        ax4 = fig.add_subplot(3, 3, 9, sharex = ax2)
-        ax4.set_ylabel('N')
+        ax4 = fig.add_subplot(3, 3, 9, sharex = ax3)
+        ax4.set_ylabel('freq')
         ax4.yaxis.tick_right()
         ax4.yaxis.set_label_position('right') 
-        #ax4.set_xlabel('Lag (days)')
-        ax4.set_xlim(xmin, xmax)
-        ax4.text(0.2, 0.85, 'CCPD ', horizontalalignment = 'center', verticalalignment = 'center', transform = ax4.transAxes, fontsize = 16)
+        ax4.text(0.4, 0.85, 'CCPD ', horizontalalignment = 'center', verticalalignment = 'center', transform = ax4.transAxes, fontsize = 16)
         ax4.hist(tlags_peak, bins = bins, color = 'b')
         
         plotccf = '{}/CCFResultsPlot_{}_{}_{}.png'.format(config.output_dir(),period,fltr1,fltr2)

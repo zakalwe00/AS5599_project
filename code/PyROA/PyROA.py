@@ -9,7 +9,7 @@ import pandas as pd
 import csv
 import emcee
 import matplotlib
-matplotlib.use('Agg')
+#matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
 def InterCalibrateFilt(model,fltr):

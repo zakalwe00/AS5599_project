@@ -1,14 +1,6 @@
 import os,json,datetime
 import PyROA.Utils as Utils
-import numpy as np
-from multiprocessing import Pool
-from itertools import chain
-from tabulate import tabulate
-import pandas as pd
-import emcee
-import matplotlib
-matplotlib.use('Agg')
-import matplotlib.pyplot as plt
+
 
 # AGN lightcurve model config holds configuration data for the pipeline
 # but does not manipulate data or create directories
