@@ -18,11 +18,11 @@
         "Nburnin": 10000
     },
     "ccf": {
-	"Niter": 500,
+	"Niter": 10000,
 	"sigma_limit": 3,
         "lag_range": [
-            -20.0,
-            20.0
+            -15.0,
+            15.0
         ]
     }
 }

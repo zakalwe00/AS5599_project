@@ -1,5 +1,5 @@
 import os,json
-import PyROA.Utils as Utils
+from AGNLCLib import Utils
 from multiprocessing import Pool
 from itertools import chain
 from tabulate import tabulate
@@ -9,10 +9,10 @@ import pandas as pd
 import csv
 import emcee
 import matplotlib
-#matplotlib.use('Agg')
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
-def InterCalibrateFilt(model,fltr):
+def InterCalibrateFilt(model,fltr,overwrite=False):
     print('Running PyROA InterCalibrateFilt for filter {}'.format(fltr))
 
     # references for convenience
@@ -36,7 +36,7 @@ def InterCalibrateFilt(model,fltr):
 
     output_file = '{}/{}_{}.dat'.format(config.output_dir(),config.agn_name(),fltr)
 
-    if Utils.check_file(output_file) == True:
+    if Utils.check_file(output_file) == True and overwrite==False:
         print('Not running filter {} calibration, file exists: {}'.format(fltr, output_file))
         return
 
@@ -81,8 +81,8 @@ def InterCalibrateFilt(model,fltr):
     nwalkers, ndim = pos.shape
 
     # 12 threads works if 12 virtual cores available
-    # Reduce memory usage -> 6 threads 2023/06/13
-    with Pool(6) as pool:
+    # Reduce memory usage -> 6 threads 2023/06/14 as turgon has very little memory(?)
+    with Pool(8) as pool:
         sampler = emcee.EnsembleSampler(nwalkers, ndim, Utils.log_probability_calib, 
                                         args=(data, [params['delta_prior'], params['sigma_prior']],
                                               params['sig_level'], init_params_chunks), pool=pool)
@@ -140,13 +140,13 @@ def InterCalibrateFilt(model,fltr):
     params.append([delta])
     params = list(chain.from_iterable(params))#Flatten into single array
     #Calculate ROA to merged lc
-    t, m, errs = RunningOptimalAverage(merged_mjd, merged_flux, merged_err, delta)
+    t, m, errs = Utils.RunningOptimalAverage(merged_mjd, merged_flux, merged_err, delta)
     
     Calibrated_mjd = []
     Calibrated_flux = []
     Calibrated_err = [] 
                 
-    Porc=CalculatePorc(merged_mjd, merged_flux, merged_err, delta)
+    Porc=Utils.CalculatePorc(merged_mjd, merged_flux, merged_err, delta)
     
     for i in range(len(data)):
         A = np.percentile(samples_chunks[i][0], [16, 50, 84])[1]
@@ -228,7 +228,7 @@ def InterCalibrateFilt(model,fltr):
                          quoting=csv.QUOTE_NONE,delim_whitespace=True)
 
         output_file = '{}/{}_Calibration_Plot.pdf'.format(config.output_dir(),fltr)
-        if os.path.exists(output_file) == False:
+        if (os.path.exists(output_file) == False) or (overwrite == True):
             
             plt.rcParams.update({
                 "font.family": "Sans", 
@@ -256,7 +256,7 @@ def InterCalibrateFilt(model,fltr):
 
         output_file = '{}/{}_Calibration_CornerPlot.pdf'.format(config.output_dir(),fltr)
             
-        if os.path.exists(output_file) == False:
+        if (os.path.exists(output_file) == False) or (overwrite == True):
             plt.rcParams.update({'font.size': 15})
             #Save Cornerplot to figure
             fig = corner.corner(samples_flat, labels=labels, quantiles=[0.16, 0.5, 0.84], show_titles=True,
@@ -274,72 +274,44 @@ def Fit(model, exclude_filters, init_tau = None, init_delta=1.0,
         use_backend = False, resume_progress = False, plot_corner=False):
     # references for convenience- rework
     config = model.config()
-    params = config.calibration_params()
+    ROAfit_params = config.ROAfit_params()
     data=[]
     for fltr in model._fltrs:
         calib_file = '{}/{}_{}.dat'.format(model._output_dir,model._agn_name,fltr)
         if Utils.check_file(calib_file):
             data.append(np.loadtxt(calib_file))
 
-    self.priors= priors
-    self.init_tau = init_tau
-    self.init_delta=init_delta
-    self.add_var = add_var            
-            
-    self.delay_dist = delay_dist
     if (delay_dist==True):
-        self.psi_types = psi_types
         if (psi_types==None):
-            self.psi_types = ["Gaussian"]*len(filters)
+            psi_types = ["Gaussian"]*len(filters)
         else:
-            self.psi_types = np.insert(psi_types, [0], psi_types[0])
+            psi_types = np.insert(psi_types, [0], psi_types[0])
     else:
-        self.psi_types = [None]*len(filters)
-        
-    self.sig_level = sig_level
-    self.Nsamples = Nsamples
-    self.Nburnin = Nburnin
+        psi_types = [None]*len(filters)
         
     if (delay_ref == None):
-        self.delay_ref = filters[0]
-    else:
-        self.delay_ref = delay_ref
-    self.delay_ref_pos = np.where(np.array(filters) == self.delay_ref)[0]
+        delay_ref = filters[0]
+
+    delay_ref_pos = np.where(np.array(filters) == delay_ref)[0]
     if (init_tau == None):
-        self.init_tau = [0]*len(data)
+        init_tau = [0]*len(data)
         if (delay_dist == True):
-            self.init_tau = [1.0]*len(data)
+            init_tau = [1.0]*len(data)
         if (AccDisc == True):
-            self.init_tau = 5.0*(((np.array(wavelengths)/wavelengths[0]))**1.4)
+            init_tau = 5.0*(((np.array(wavelengths)/wavelengths[0]))**1.4)
     else:
         Nchunk = 3
-        if (self.add_var == True):
+        if (add_var == True):
             Nchunk +=1
-        if (self.delay_dist == True):
+        if (delay_dist == True):
             Nchunk+=1
         
-        self.init_tau = np.insert(init_tau, self.delay_ref_pos, 0.0)
+        init_tau = np.insert(init_tau, self.delay_ref_pos, 0.0)
             
-    self.include_slow_comp=include_slow_comp
-    self.slow_comp_delta=slow_comp_delta
-        
-    self.calc_P=calc_P
-    self.AccDisc = AccDisc
-    self.wavelengths = wavelengths
-    self.use_backend = use_backend
-    self.resume_progress = resume_progress
-    run = FullFit(data, self.priors, self.init_tau, self.init_delta, self.add_var, 
-                  self.sig_level, self.Nsamples, self.Nburnin, self.include_slow_comp, 
-                  self.slow_comp_delta, self.calc_P, self.delay_dist, self.psi_types, 
-                  self.delay_ref_pos, self.AccDisc, self.wavelengths, self.filters, 
-                  self.use_backend, self.resume_progress,plot_corner)
+    samples,samples_flat,t,X,X_errs,slow_comps,params,models = FullFit(data, priors, init_tau, init_delta, add_var, 
+                                                                       sig_level, Nsamples, Nburnin, include_slow_comp, 
+                                                                       slow_comp_delta, calc_P, delay_dist, psi_types, 
+                                                                       delay_ref_pos, AccDisc, wavelengths, filters, 
+                                                                       use_backend, resume_progress,plot_corner)
 
-    self.samples = run[0]
-    self.samples_flat = run[1]
-    self.t = run[2]
-    self.X = run[3]
-    self.X_errs = run[4]
-    if (self.include_slow_comp==True):
-        self.slow_comps=run[5]
-    self.params=run[6]
-    self.models = run[7]
+

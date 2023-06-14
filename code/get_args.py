@@ -1,6 +1,6 @@
 #!/minthome/hcornfield/.local/bin/python
 import os,argparse
-from PyROA import AGNLCModel
+from AGNLCLib import AGNLCModel
 
 # Fast interogation of setup variables for launcher.sh
 

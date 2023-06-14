@@ -3,7 +3,7 @@
 import os,re,argparse
 import pandas as pd
 import numpy as np
-import PyROA
+import AGNLCLib
 
 # setup global variables for use in the data pipeline (these can be overridden in environment)
 PROJECTDIR = os.environ.get('PROJECTDIR','/minthome/hcornfield/git/AS5599_project')
@@ -15,9 +15,12 @@ CONFIGDIR = os.environ.get('CONFIGDIR','/minthome/hcornfield/git/AS5599_project/
 AGN_NAMES = [ agn.name for agn in os.scandir(PROJECTDIR) if agn.is_dir()
               and agn.name not in ['code','config'] and agn.name[0] != '.']
 
-FUNCTION_MAPPING = { 'calibrate': PyROA.InterCalibrateFilt,
-                     'fit': PyROA.Fit,
-                     'ccf': PyROA.PyCCF }
+FUNCTION_MAPPING = {
+    # PyROA functions adapted from https://github.com/FergusDonnan/PyROA
+    'calibrate': AGNLCLib.InterCalibrateFilt,
+    'fit': AGNLCLib.Fit,
+    # Uses PYCCF code adapted from https://bitbucket.org/cgrier/python_ccf_code/src/master/
+    'ccf': AGNLCLib.PyCCF }
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -39,7 +42,7 @@ Available functions are {}".format(','.join([xx for xx in FUNCTION_MAPPING.keys(
         raise Exception('Unexpected format for function argument {}'.format(args.function))
 
     # Create lightcurve model for this AGN
-    model = PyROA.AGNLCModel(PROJECTDIR,CONFIGDIR,args.agn)
+    model = AGNLCLib.AGNLCModel(PROJECTDIR,CONFIGDIR,args.agn)
     # run function
     function(model,*function_args)
     

@@ -15,22 +15,19 @@ then
     for fltr in $FLTRS
     do
 	echo "Running $LAUNCH_SCRIPT $AGN calibrate:$fltr 2>&1|cat > $LOG_DIR/calibrate_$fltr.log"
-	$LAUNCH_SCRIPT $AGN calibrate:$fltr 2>&1|cat > $LOG_DIR/calibrate_$fltr.log
+	$LAUNCH_SCRIPT $AGN calibrate:$fltr 2>&1|cat > "$LOG_DIR/calibrate_$fltr.log"
     done
 fi
 
 if [ $CCF -eq 1 ]
 then
     echo "--CCF--"
-    for fltr1 in $FLTRS
+    for fltr in $FLTRS
     do
-	for fltr2 in $FLTRS
-	do
-	    if [[ $fltr1 < $fltr2 ]]
-	    then
-		echo "Running $LAUNCH_SCRIPT $AGN ccf:$fltr1,$fltr2 2>&1|cat > $LOG_DIR/ccf_$fltr1""_$fltr2.log"
-		$LAUNCH_SCRIPT $AGN ccf:$fltr1,$fltr2 2>&1|cat > "$LOG_DIR/ccf_$fltr1""_$fltr2.log"
-	    fi
-	done
+	if [[ $fltr != 'g' ]]
+	then
+	    echo "Running $LAUNCH_SCRIPT $AGN ccf:g,$fltr 2>&1|cat > $LOG_DIR/ccf_g_$fltr.log"
+#	    $LAUNCH_SCRIPT $AGN ccf:g,$fltr 2>&1|cat > "$LOG_DIR/ccf_g_$fltr.log"
+	fi
     done
 fi

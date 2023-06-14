@@ -5,6 +5,54 @@ import scipy
 from numba import jit
 from numba import prange
 
+@jit(nopython=True, cache=True, parallel=True)
+def CalculatePorc(t_data, Flux, Flux_err, delta):
+
+    Ps = np.empty(len(t_data))
+    for i in prange(len(t_data)):
+    
+    
+        #Only include significant data points
+        t_data_use = t_data[np.where(np.absolute(t_data[i]-t_data) < 5.0*delta)[0]]
+        Flux_err_use = Flux_err[np.where(np.absolute(t_data[i]-t_data) < 5.0*delta)[0]]
+
+        
+        if (len(np.where(np.absolute(t_data[i]-t_data) < 5.0*delta)[0])==0):
+            #Define Gaussian Memory Function
+            w =np.exp(-0.5*(((t_data[i]-t_data)/delta)**2))/(Flux_err**2)
+
+            #1/cosh Memory function
+            #w = 1.0/((Flux_err**2)*np.cosh((t_data[i]-t_data)/delta))
+
+            #Lorentzian
+           # w = 1.0/((Flux_err**2)*(1.0+((t_data[i]-t_data)/delta)**2))
+           
+           #Boxcar
+            #w=np.full(len(Flux_err), 0.01)
+
+            
+            
+        else:
+        
+            #Define Gaussian Memory Function
+            w =np.exp(-0.5*(((t_data[i]-t_data_use)/delta)**2))/(Flux_err_use**2)
+
+            #1/cosh Memory function
+            #w = 1.0/((Flux_err_use**2)*np.cosh((t_data[i]-t_data_use)/delta))
+
+            #Lorentzian
+            #w = 1.0/((Flux_err_use**2)*(1.0+((t_data[i]-t_data_use)/delta)**2))
+            
+            #Boxcar
+            #w=1.0/(Flux_err_use**2)
+        w_sum = np.nansum(w)
+
+        #P= P + 1.0/((Flux_err[i]**2)*np.nansum(w))
+        if (w_sum==0):
+            w_sum = 1e-300
+        Ps[i] = 1.0/((Flux_err[i]**2)*w_sum)
+
+    return Ps
 
 #Probability
 @jit(nopython=True, cache=True, parallel=True)
@@ -122,7 +170,7 @@ def CalculateP(t_data, Flux, Flux_err, delta):
     return np.nansum(Ps)
 
 #Log Likelihood
-def log_likelihood_calib(params, data, sig_level):
+def _log_likelihood_calib(params, data, sig_level):
 
     #Break params list into chunks of 3 i.e A, B, V in each chunk
     params_chunks = [params[i:i + 3] for i in range(0, len(params), 3)] 
@@ -213,7 +261,7 @@ def log_likelihood_calib(params, data, sig_level):
     return -1.0*BIC
 
 #Calibration priors
-def log_prior_calib(params, priors, s, init_params_chunks):
+def _log_prior_calib(params, priors, s, init_params_chunks):
     #Break params list into chunks of 3 i.e A, B, sigma in each chunk
     params_chunks = [params[i:i + 3] for i in range(0, len(params), 3)]
     
@@ -258,10 +306,10 @@ def log_prior_calib(params, priors, s, init_params_chunks):
         return -np.inf
 
 def log_probability_calib(params, data, priors, sig_level, init_params_chunks):
-    lp = log_prior_calib(params, priors, len(data), init_params_chunks)
+    lp = _log_prior_calib(params, priors, len(data), init_params_chunks)
     if not np.isfinite(lp):
         return -np.inf
-    return lp + log_likelihood_calib(params, data, sig_level)
+    return lp + _log_likelihood_calib(params, data, sig_level)
 
 ########################################
 # Maths Operations                     #
@@ -320,7 +368,6 @@ def write_scope_filter_data(config,obs_file):
                 except KeyError:
                     print('Filter {} not found for telescope {}'.format(fltr, scope))
                     continue
-                print('Writing file {}'.format(output_fn))
                 obs_scope_fltr.to_csv(output_fn, sep=' ', index=False, header=False)
 
     config.set_fltrs(fltrs)

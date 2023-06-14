@@ -5,15 +5,15 @@ import pandas as pd
 import csv
 from matplotlib import pyplot as plt
 import scipy
-from PyROA import Utils
+from AGNLCLib import Utils
 import PYCCF
 from scipy import stats 
 
 # Uses the output from InterCalibrateFilt for two filter bands
 # to run CCF_interp from the PyCCF codebase and output
 # CCF/CCCD/CCPD data files
-def PyCCF(model,fltr1,fltr2):
-    print('Running PyCCF intercorrelation for filter bands {}, {}'.format(fltr1, fltr2))
+def PyCCF(model,fltr1,fltr2,overwrite=False):
+    print('Running PyCCF interpolated cross correlation for filter bands {}, {}'.format(fltr1, fltr2))
 
     # references for convenience
     config = model.config()
@@ -43,7 +43,7 @@ def PyCCF(model,fltr1,fltr2):
     # lag range of data considered by year
     for period in params["periods"]:        
         centroidfile = '{}/Centroid_{}_{}_{}.dat'.format(config.output_dir(),period,fltr1,fltr2)
-        if Utils.check_file(centroidfile) == True:
+        if (Utils.check_file(centroidfile) == True) and (overwrite == False):
             print('Not running period {} {} vs {} calibration, file exists: {}'.format(period,fltr1,fltr2,centroidfile))
             break
             
@@ -74,13 +74,16 @@ def PyCCF(model,fltr1,fltr2):
                                                                                                                     '{:.3f}'.format(median_cad2)))
 
         # Interpolation time step (days). Must be less than the average cadence of the observations, but too small will introduce noise.
-        # Consider the lowest median from both curves and round down to nearest 1/20 days.
+        # Consider the lowest median cadence from both curves and round down to nearest 1/20 days,
+        # then take 1/5 of this.
         interp = params["periods"][period].get("med_cadence",
-                                                   np.minimum(np.floor(median_cad1*20.0)*0.05,
-                                                              np.floor(median_cad2*20.0)*0.05))
-        print('Using lag_range={} days, interp={} days'.format(lag_range,'{:.2f}'.format(interp)))
+                                               np.minimum(np.floor(median_cad1*4.0)*0.05,
+                                                          np.floor(median_cad2*4.0)*0.05))
+            
         
         nsim = params["Niter"]  #Number of Monte Carlo iterations for calculation of uncertainties
+
+        print('Using lag_range={} days, interp={} days, nsim={}'.format(lag_range,'{:.2f}'.format(interp),nsim))
 
         mcmode = 0                  #Do both FR/RSS sampling (1 = RSS only, 2 = FR only) 
         #Choose the threshold for considering a measurement "significant".
@@ -95,7 +98,7 @@ def PyCCF(model,fltr1,fltr2):
         tlags_peak, tlags_centroid, nsuccess_peak, nfail_peak, nsuccess_centroid, nfail_centroid, max_rvals, nfail_rvals, pvals = PYCCF.xcor_mc(mjd1, flux1, abs(err1),
                                                                                                                                                 mjd2, flux2, abs(err2),
                                                                                                                                                 lag_range[0], lag_range[1], interp,
-                                                                                                                                                nsim = nsim, mcmode=mcmode, sigmode =sigmode)
+                                                                                                                                                nsim=nsim,mcmode=mcmode,sigmode=sigmode)
 
         lag = ccf_pack[1]
         r = ccf_pack[0]
@@ -146,13 +149,13 @@ def PyCCF(model,fltr1,fltr2):
         ##########################################
 
         fig = plt.figure()
-        fig.subplots_adjust(hspace=0.2, wspace = 0.1)
+        fig.subplots_adjust(hspace=0.5, wspace = 0.1)
 
         #Plot lightcurves
         ax1 = fig.add_subplot(3, 1, 1)
-        ax1.errorbar(mjd1, flux1, yerr = err1, marker = '.', linestyle = 'dotted', color = 'k', label = 'Filter band {}'.format(fltr1))
+        ax1.errorbar(mjd1,flux1,yerr = err1,marker ='.',ms=3.5,elinewidth=0.5,linestyle='dotted',color='k',label='Filter band {}'.format(fltr1))
         ax1_2 = fig.add_subplot(3, 1, 2, sharex = ax1)
-        ax1_2.errorbar(mjd2, flux2, yerr = err2, marker = '.', linestyle = 'dotted', color = 'k', label = 'Filter band {}'.format(fltr2))
+        ax1_2.errorbar(mjd2,flux2,yerr=err2,marker ='.',ms=3.5,elinewidth=0.5,linestyle ='dotted',color ='k',label='Filter band {}'.format(fltr2))
 
         ax1.text(0.025, 0.825, fltr1, fontsize = 15, transform = ax1.transAxes, color="red")
         ax1_2.text(0.025, 0.825, fltr2, fontsize = 15, transform = ax1_2.transAxes, color="red")
@@ -169,7 +172,7 @@ def PyCCF(model,fltr1,fltr2):
         
         ax3 = fig.add_subplot(3, 3, 8)
         ax3.axes.get_yaxis().set_ticks([])
-        ax3.set_xlabel('Centroid Lag: %5.1f (+%5.1f -%5.1f) days'%(centau, centau_uperr, centau_loerr), fontsize = 15) 
+        ax3.set_xlabel('Centroid Lag: %5.2f (+%5.2f -%5.2f) days'%(centau, centau_uperr, centau_loerr), fontsize = 15) 
         ax3.text(0.4, 0.85, 'CCCD ', horizontalalignment = 'center', verticalalignment = 'center', transform = ax3.transAxes, fontsize = 16)
         n, bins, etc = ax3.hist(tlags_centroid, bins = 50, color = 'b')
 

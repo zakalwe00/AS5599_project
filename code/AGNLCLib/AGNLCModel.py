@@ -1,5 +1,5 @@
 import os,json,datetime
-import PyROA.Utils as Utils
+import AGNLCLib.Utils as Utils
 
 
 # AGN lightcurve model config holds configuration data for the pipeline
@@ -60,7 +60,8 @@ class AGNLCModelConfig():
         return '{}/output/tmp/{}'.format(self._root_dir,datetime.datetime.now().strftime('%Y%m%d_%H%M%S'))
     def set_scopes(self, scopes): self._scopes = scopes
     def set_fltrs(self, fltrs): self._fltrs = fltrs
-        
+    def set_output_dir(self, output_dir): self._output_dir = output_dir
+    
     
 # Model holds configuration parameters and runs lightcurve analysis functions
 class AGNLCModel():
