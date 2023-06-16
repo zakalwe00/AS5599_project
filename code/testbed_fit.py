@@ -11,18 +11,24 @@ PROJECTDIR = os.environ.get('PROJECTDIR','/minthome/hcornfield/git/AS5599_projec
 #json files for project configuration
 CONFIGDIR = os.environ.get('CONFIGDIR','/minthome/hcornfield/git/AS5599_project/config')
 
-AGN = 'NGC_6814'
+AGN = 'Fairall_9'
 
 model = AGNLCLib.AGNLCModel(PROJECTDIR,CONFIGDIR,AGN)
 
 #Remove the longer period, test only on the shorter
 #model.config().observation_params()['periods'].pop('Aug2022-Dec2022')
 
+# just run with 'g', 'i', 'r'
+model.config().fltrs().pop('V')
+model.config().fltrs().pop('B')
+model.config().fltrs().pop('z')
+model.config().fltrs().pop('u')
+
 model.config().set_output_dir('{}/{}/output.test'.format(PROJECTDIR,AGN))
 
-for fltr in model.config().fltrs():
+for fltr in 
     if fltr != 'g':
-        AGNLCLib.PyCCF(model,'g',fltr,overwrite=True)
+        AGNLCLib.Fit(model)
 
         
 

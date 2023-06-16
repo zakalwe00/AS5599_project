@@ -17,12 +17,23 @@
         "Nsamples": 15000,
         "Nburnin": 10000
     },
-    "ccf": {
-	"Niter": 10000,
+    "CCF": {
+	"MC_Iterations": 10000,
+	"Centroid_Threshold": 0.8,
 	"sigma_limit": 3,
         "lag_range": [
             -15.0,
             15.0
         ]
+    },
+    "ROA": {
+        "Nsamples": 15000,
+        "Nburnin": 10000,
+	"A_prior": [0.5,2.0],
+	"B_prior": [0.5,2.0],
+	"tau_prior": [-15.0,15.0],
+	"delta_prior": [0.01,10.0],
+	"v_prior": [0.0, 10.0],
+	"ref_filter":'g'
     }
 }

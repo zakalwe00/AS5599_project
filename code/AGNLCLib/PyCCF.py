@@ -76,14 +76,16 @@ def PyCCF(model,fltr1,fltr2,overwrite=False):
         # Interpolation time step (days). Must be less than the average cadence of the observations, but too small will introduce noise.
         # Consider the lowest median cadence from both curves and round down to nearest 1/20 days,
         # then take 1/5 of this.
-        interp = params["periods"][period].get("med_cadence",
+        interp = params["periods"][period].get("Interp_Period",
                                                np.minimum(np.floor(median_cad1*4.0)*0.05,
                                                           np.floor(median_cad2*4.0)*0.05))
             
         
-        nsim = params["Niter"]  #Number of Monte Carlo iterations for calculation of uncertainties
+        nsim = params["MC_Iterations"]  #Number of Monte Carlo iterations for calculation of uncertainties
 
-        print('Using lag_range={} days, interp={} days, nsim={}'.format(lag_range,'{:.2f}'.format(interp),nsim))
+        thres = params["Centroid_Threshold"]
+        
+        print('Using lag_range={} days, interp={} days, nsim={}, thres={}'.format(lag_range,'{:.2f}'.format(interp),nsim,thres))
 
         mcmode = 0                  #Do both FR/RSS sampling (1 = RSS only, 2 = FR only) 
         #Choose the threshold for considering a measurement "significant".
@@ -93,11 +95,10 @@ def PyCCF(model,fltr1,fltr2,overwrite=False):
         ##########################################
         #Calculate lag with python CCF program
         ##########################################
-        tlag_peak, status_peak, tlag_centroid, status_centroid, ccf_pack, max_rval, status_rval, pval = PYCCF.peakcent(mjd1, flux1, mjd2, flux2,
-                                                                                                                       lag_range[0], lag_range[1], interp)
-        tlags_peak, tlags_centroid, nsuccess_peak, nfail_peak, nsuccess_centroid, nfail_centroid, max_rvals, nfail_rvals, pvals = PYCCF.xcor_mc(mjd1, flux1, abs(err1),
-                                                                                                                                                mjd2, flux2, abs(err2),
-                                                                                                                                                lag_range[0], lag_range[1], interp,
+        tlag_peak, status_peak, tlag_centroid, status_centroid, ccf_pack, max_rval, status_rval, pval = PYCCF.peakcent(mjd1,flux1,mjd2,flux2,
+                                                                                                                       lag_range[0],lag_range[1],interp,thres=thres)
+        tlags_peak, tlags_centroid, nsuccess_peak, nfail_peak, nsuccess_centroid, nfail_centroid, max_rvals, nfail_rvals, pvals = PYCCF.xcor_mc(mjd1,flux1,abs(err1),mjd2,flux2,abs(err2),
+                                                                                                                                                lag_range[0],lag_range[1],interp,thres=thres,
                                                                                                                                                 nsim=nsim,mcmode=mcmode,sigmode=sigmode)
 
         lag = ccf_pack[1]
@@ -150,15 +151,15 @@ def PyCCF(model,fltr1,fltr2,overwrite=False):
 
         fig = plt.figure()
         fig.subplots_adjust(hspace=0.5, wspace = 0.1)
-
+        fig.suptitle('Filter band {} centroid lag: {:5.2f} (+{:5.2f} -{:5.2f}) days'.format(fltr2, centau, centau_uperr, centau_loerr), fontsize = 15) 
         #Plot lightcurves
         ax1 = fig.add_subplot(3, 1, 1)
         ax1.errorbar(mjd1,flux1,yerr = err1,marker ='.',ms=3.5,elinewidth=0.5,linestyle='dotted',color='k',label='Filter band {}'.format(fltr1))
         ax1_2 = fig.add_subplot(3, 1, 2, sharex = ax1)
         ax1_2.errorbar(mjd2,flux2,yerr=err2,marker ='.',ms=3.5,elinewidth=0.5,linestyle ='dotted',color ='k',label='Filter band {}'.format(fltr2))
 
-        ax1.text(0.025, 0.825, fltr1, fontsize = 15, transform = ax1.transAxes, color="red")
-        ax1_2.text(0.025, 0.825, fltr2, fontsize = 15, transform = ax1_2.transAxes, color="red")
+        ax1.text(0.025, 0.825, 'ref: {}'.format(fltr1), fontsize = 10, transform = ax1.transAxes, color="red")
+        ax1_2.text(0.025, 0.825, 'filter: {}'.format(fltr2), fontsize = 10, transform = ax1_2.transAxes, color="red")
         ax1.set_ylabel('Flux')
         ax1_2.set_ylabel('Flux')
         ax1_2.set_xlabel('MJD')
@@ -166,23 +167,29 @@ def PyCCF(model,fltr1,fltr2,overwrite=False):
         #Plot CCF Information
         ax2 = fig.add_subplot(3, 3, 7)
         ax2.set_ylabel('CCF r')
-        ax2.text(0.2, 0.85, 'CCF ', horizontalalignment = 'center', verticalalignment = 'center', transform = ax2.transAxes, fontsize = 16)
-        ax2.set_ylim(-0.2, 1.0)
-        ax2.plot(lag, r, color = 'k')
+        ax2.text(0.3, 0.75, 'CCF ', horizontalalignment = 'center', verticalalignment = 'center', transform = ax2.transAxes, fontsize = 10)
+        ax2.set_ylim(-0.2, 1.2)
+        # only one line may be specified; full height
+        ax2.axvline(x=0,color='gray')
+        ax2.axhline(y=0,color='gray')
+        ax2.axhline(y=thres*np.max(r),color = 'blue',linestyle='dashed')
+        ax2.plot(lag,r,color = 'k')
         
         ax3 = fig.add_subplot(3, 3, 8)
         ax3.axes.get_yaxis().set_ticks([])
-        ax3.set_xlabel('Centroid Lag: %5.2f (+%5.2f -%5.2f) days'%(centau, centau_uperr, centau_loerr), fontsize = 15) 
-        ax3.text(0.4, 0.85, 'CCCD ', horizontalalignment = 'center', verticalalignment = 'center', transform = ax3.transAxes, fontsize = 16)
+        ax3.set_xlabel('MJD lag')
+        ax3.text(0.3, 0.75, 'CCCD ', horizontalalignment = 'center', verticalalignment = 'center', transform = ax3.transAxes, fontsize = 10)
         n, bins, etc = ax3.hist(tlags_centroid, bins = 50, color = 'b')
+        ax3.axvline(x=0,color = 'gray')
 
         ax4 = fig.add_subplot(3, 3, 9, sharex = ax3)
         ax4.set_ylabel('freq')
         ax4.yaxis.tick_right()
         ax4.yaxis.set_label_position('right') 
-        ax4.text(0.4, 0.85, 'CCPD ', horizontalalignment = 'center', verticalalignment = 'center', transform = ax4.transAxes, fontsize = 16)
+        ax4.text(0.3, 0.75, 'CCPD ', horizontalalignment = 'center', verticalalignment = 'center', transform = ax4.transAxes, fontsize = 10)
         ax4.hist(tlags_peak, bins = bins, color = 'b')
-        
+        ax4.axvline(x = 0,color = 'gray')
+
         plotccf = '{}/CCFResultsPlot_{}_{}_{}.png'.format(config.output_dir(),period,fltr1,fltr2)
         
         plt.savefig(plotccf, format = 'png', orientation = 'landscape', bbox_inches = 'tight') 

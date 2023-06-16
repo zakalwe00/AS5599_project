@@ -4,6 +4,8 @@ import os,re,argparse
 import pandas as pd
 import numpy as np
 import AGNLCLib
+import matplotlib
+matplotlib.use('Agg')
 
 # setup global variables for use in the data pipeline (these can be overridden in environment)
 PROJECTDIR = os.environ.get('PROJECTDIR','/minthome/hcornfield/git/AS5599_project')

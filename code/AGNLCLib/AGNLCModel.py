@@ -20,7 +20,8 @@ class AGNLCModelConfig():
         self._data_params = params.get('data',{})
         self._observation_params = params.get('observation',{})
         self._calibration_params = params.get('calibration',{})
-        self._ccf_params = params.get('ccf',{})
+        self._ccf_params = params.get('CCF',{})
+        self._roa_params = params.get("ROA",{})
 
         #override with any object-specific parameters
         object_config_file = '{}/{}.json'.format(CONFIGDIR,agn_name)
@@ -33,8 +34,10 @@ class AGNLCModelConfig():
                     self._observation_params.update(object_params['observation'])
                 if 'calibration' in object_params:
                     self._calibration_params.update(object_params['calibration'])
-                if 'ccf' in object_params:
-                    self._ccf_params.update(object_params['ccf'])
+                if 'CCF' in object_params:
+                    self._ccf_params.update(object_params['CCF'])
+                if 'ROA' in object_params:
+                    self._roa_params.update(object_params['ROA'])
 
         self._agn_name = agn_name
         self._root_dir = '{}/{}'.format(PROJECTDIR,agn_name)
@@ -55,7 +58,8 @@ class AGNLCModelConfig():
     def data_params(self): return self._data_params
     def calibration_params(self): return self._calibration_params
     def observation_params(self): return self._observation_params
-    def ccf_params(self): return self._ccf_params    
+    def ccf_params(self): return self._ccf_params
+    def roa_params(self): return self._roa_params
     def tmp_dir(self):
         return '{}/output/tmp/{}'.format(self._root_dir,datetime.datetime.now().strftime('%Y%m%d_%H%M%S'))
     def set_scopes(self, scopes): self._scopes = scopes

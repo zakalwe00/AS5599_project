@@ -9,8 +9,13 @@ import pandas as pd
 import csv
 import emcee
 import matplotlib
-matplotlib.use('Agg')
 import matplotlib.pyplot as plt
+import scipy.interpolate as interpolate
+import scipy.special as special
+from scipy import signal
+from scipy.ndimage import gaussian_filter1d
+from scipy.integrate import quad
+
 
 def InterCalibrateFilt(model,fltr,overwrite=False):
     print('Running PyROA InterCalibrateFilt for filter {}'.format(fltr))
@@ -79,13 +84,14 @@ def InterCalibrateFilt(model,fltr,overwrite=False):
     pos = 1e-4 * np.random.randn(int(2.0*Npar), int(Npar)) + pos
     print("NWalkers="+str(int(2.0*Npar)))
     nwalkers, ndim = pos.shape
-
+    sig_level = params['sig_level']
+    
     # 12 threads works if 12 virtual cores available
     # Reduce memory usage -> 6 threads 2023/06/14 as turgon has very little memory(?)
     with Pool(8) as pool:
         sampler = emcee.EnsembleSampler(nwalkers, ndim, Utils.log_probability_calib, 
                                         args=(data, [params['delta_prior'], params['sigma_prior']],
-                                              params['sig_level'], init_params_chunks), pool=pool)
+                                              sig_level, init_params_chunks), pool=pool)
         sampler.run_mcmc(pos, params['Nsamples'], progress=True);
 
     #Extract samples with burn-in of 10000 (default setting, see global.json)
@@ -203,7 +209,7 @@ def InterCalibrateFilt(model,fltr,overwrite=False):
     error_j1 = interp(Calibrated_mjd)
     print(error_j1.shape)
 
-    print(" >>>>> DELTA <<<<< ",Delta)
+    print(" >>>>> DELTA <<<<< ",delta)
         
     # Put all arrays in a pandas dataframe and export
     df = pd.DataFrame({
@@ -267,7 +273,7 @@ def InterCalibrateFilt(model,fltr,overwrite=False):
            
     return
 
-def Fit(model, exclude_filters, init_tau = None, init_delta=1.0,
+def Fit(model, init_tau = None, init_delta=1.0,
         delay_dist=False , psi_types = None, add_var=True, sig_level = 4.0, 
         Nsamples=10000, Nburnin=5000, include_slow_comp=False, slow_comp_delta=30.0, 
         delay_ref = None, calc_P=False, AccDisc=False, wavelengths=None, 
@@ -275,6 +281,11 @@ def Fit(model, exclude_filters, init_tau = None, init_delta=1.0,
     # references for convenience- rework
     config = model.config()
     ROAfit_params = config.ROAfit_params()
+    priors = [ROAfit_params["A_prior"],
+              ROAfit_params["B_prior"],
+              ROAfit_params["tau_prior"],
+              ROAfit_params["delta_prior"],
+              ROAfit_params["v_prior"]]
     data=[]
     for fltr in model._fltrs:
         calib_file = '{}/{}_{}.dat'.format(model._output_dir,model._agn_name,fltr)
