@@ -15,18 +15,18 @@ class AGNLCModelConfig():
             raise Exception('Unable to configure AGN lightcurve model, {} does not exist'.format(global_config_file))
 
         # Take parameters from global config file and override with AGN object-specific settings
-        with open(global_config_file, "r") as fd:
+        with open(global_config_file, 'r') as fd:
             params = json.load(fd)
         self._data_params = params.get('data',{})
         self._observation_params = params.get('observation',{})
         self._calibration_params = params.get('calibration',{})
         self._ccf_params = params.get('CCF',{})
-        self._roa_params = params.get("ROA",{})
-
+        self._roa_params = params.get('ROA',{})
+        
         #override with any object-specific parameters
         object_config_file = '{}/{}.json'.format(CONFIGDIR,agn_name)
         if Utils.check_file(object_config_file):
-            with open(object_config_file, "r") as fd:
+            with open(object_config_file, 'r') as fd:
                 object_params = json.load(fd)
                 if 'data' in object_params:
                     self._data_params.update(object_params['data'])
@@ -39,6 +39,10 @@ class AGNLCModelConfig():
                 if 'ROA' in object_params:
                     self._roa_params.update(object_params['ROA'])
 
+        roa_model_name = self._roa_params['model']
+        self._roa_params.update(params.get('ROA_{}'.format(roa_model_name)))
+        if 'ROA_{}'.format(roa_model_name) in object_params:
+            self._roa_params.update(object_params['ROA_{}'.format(roa_model_name)])
         self._agn_name = agn_name
         self._root_dir = '{}/{}'.format(PROJECTDIR,agn_name)
         self._output_dir = '{}/{}/output'.format(PROJECTDIR,agn_name)

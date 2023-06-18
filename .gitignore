@@ -12,7 +12,8 @@ __pycache__/
 # Log files
 *.log
 
-# Data and temporary file output
+# Data, graphs and temporary file output
+*/output/*
 *.dat
 *.err
 *.old

@@ -11,24 +11,20 @@ PROJECTDIR = os.environ.get('PROJECTDIR','/minthome/hcornfield/git/AS5599_projec
 #json files for project configuration
 CONFIGDIR = os.environ.get('CONFIGDIR','/minthome/hcornfield/git/AS5599_project/config')
 
-AGN = 'Fairall_9'
+AGN = 'NGC_6814'
 
 model = AGNLCLib.AGNLCModel(PROJECTDIR,CONFIGDIR,AGN)
 
-#Remove the longer period, test only on the shorter
-#model.config().observation_params()['periods'].pop('Aug2022-Dec2022')
-
-# just run with 'g', 'i', 'r'
-model.config().fltrs().pop('V')
-model.config().fltrs().pop('B')
-model.config().fltrs().pop('z')
-model.config().fltrs().pop('u')
-
+# We are running a test, divert output to the testbed
 model.config().set_output_dir('{}/{}/output.test'.format(PROJECTDIR,AGN))
 
-for fltr in 
-    if fltr != 'g':
-        AGNLCLib.Fit(model)
+# Artificially restrict the datapoints to consider
+model.config().roa_params()['select_period'] = 'Mar2023-Current'
+model.config().roa_params()['exclude_fltrs'] = ['z','u']
+model.config().roa_params()['Nsamples'] = 10000
+model.config().roa_params()['Nburnin'] = 6000
+
+AGNLCLib.Fit(model)
 
         
 

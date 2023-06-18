@@ -20,7 +20,8 @@
     "CCF": {
 	"MC_Iterations": 10000,
 	"Centroid_Threshold": 0.8,
-	"sigma_limit": 3,
+	"sig_level": 3,
+	"flux_jump_sig_level": 2.0,
         "lag_range": [
             -15.0,
             15.0
@@ -34,6 +35,35 @@
 	"tau_prior": [-15.0,15.0],
 	"delta_prior": [0.01,10.0],
 	"v_prior": [0.0, 10.0],
-	"ref_filter":'g'
+	"delay_ref":"g",
+	"init_delta":1.0,
+	"exclude_fltrs": [],
+	"model": "Model1",
+	"calc_P": false,
+	"sig_level": 4.0,
+	"use_backend": false,
+	"resume_progress": false,
+	"plot_corner": false
+    },
+    "ROA_Model1": {
+	"delay_dist": false,
+        "accretion_disk": false,
+	"include_slow_comp": false,
+	"slow_comp_delta": 30.0,
+	"add_var": true
+    },
+    "ROA_Model2": {
+	"delay_dist": false,
+        "accretion_disk": false,
+	"include_slow_comp": true,
+	"slow_comp_delta": 30.0,
+	"add_var": true
+    },
+    "ROA_Model2": {
+	"delay_dist": false,
+        "accretion_disk": true,
+	"include_slow_comp": true,
+	"slow_comp_delta": 30.0,
+	"add_var": true
     }
 }

@@ -16,13 +16,11 @@ AGN = 'NGC_6814'
 model = AGNLCLib.AGNLCModel(PROJECTDIR,CONFIGDIR,AGN)
 
 #Remove the longer period, test only on the shorter
-#model.config().observation_params()['periods'].pop('Aug2022-Dec2022')
+model.config().observation_params()['periods'].pop('Aug2022-Dec2022')
 
 model.config().set_output_dir('{}/{}/output.test'.format(PROJECTDIR,AGN))
 
-for fltr in model.config().fltrs():
-    if fltr != 'g':
-        AGNLCLib.PyCCF(model,'g',fltr,overwrite=True)
+AGNLCLib.PyCCF(model,'g','z',overwrite=True)
 
         
 

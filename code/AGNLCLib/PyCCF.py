@@ -34,7 +34,8 @@ def PyCCF(model,fltr1,fltr2,overwrite=False):
     fltr2_all = pd.read_csv(calib_file2,header=None,index_col=None,
                             quoting=csv.QUOTE_NONE,delim_whitespace=True).sort_values(0)
 
-    sigma_limit = params['sigma_limit']
+    flux_jump_sig_level = params.get('flux_jump_sig_level',None)
+    sig_level = params['sig_level']
     # Time lag range to consider in the CCF (days).
     # Must be small enough that there is some overlap between light curves at that shift
     # (i.e., if the light curves span 80 days, these values must be less than 80 days).
@@ -54,24 +55,30 @@ def PyCCF(model,fltr1,fltr2,overwrite=False):
         # from May to the following Feb
         mjd_range = params["periods"][period]["mjd_range"]
 
-        # filter data with sigma > sigma_limit * median_err for this date range
+        # filter data with sigma > sig_level * median_err for this date range
         fltr1_period = fltr1_all[np.logical_and(fltr1_all[0] > mjd_range[0],
                                                 fltr1_all[0] < mjd_range[1])].loc[:,0:2]
-        median_err1 = np.median(fltr1_period.loc[:,2])
-        mjd1,flux1,err1 = [col for col in fltr1_period[fltr1_period.loc[:,2] < median_err1 * sigma_limit].T.to_numpy()]
         fltr2_period = fltr2_all[np.logical_and(fltr2_all[0] > mjd_range[0],
                                                 fltr2_all[0] < mjd_range[1])].loc[:,0:2]
-        median_err2 = np.median(fltr2_period.loc[:,2])
-        mjd2,flux2,err2 = [col for col in fltr2_period[fltr2_period.loc[:,2] < median_err2 * sigma_limit].T.to_numpy()]
 
+        # filter datapoints with large error
+        fltr1_period = Utils.filter_large_sigma(fltr1_period,sig_level,fltr1)
+        fltr2_period = Utils.filter_large_sigma(fltr2_period,sig_level,fltr2)
+        
+        # filter datapoints with large flux jumps either side
+        if flux_jump_sig_level:
+            fltr1_period = Utils.filter_large_sigma_jumps(fltr1_period,flux_jump_sig_level,fltr1)
+            fltr2_period = Utils.filter_large_sigma_jumps(fltr2_period,flux_jump_sig_level,fltr2)
+
+        mjd1,flux1,err1 = [col for col in fltr1_period.T.to_numpy()]
+        mjd2,flux2,err2 = [col for col in fltr2_period.T.to_numpy()]
+            
         median_cad1 = Utils.median_cadence(mjd1)
         median_cad2 = Utils.median_cadence(mjd2)
-        print('Obs {0}, {6}+{7}, {1}+{2} datapts after filter (err < {3}*{5} + {4}*{5}) med cadence {8}+{9}'.format(period,len(mjd1),len(mjd2),
-                                                                                                                    '{:.5f}'.format(median_err1),
-                                                                                                                    '{:.5f}'.format(median_err2),
-                                                                                                                    sigma_limit,fltr1,fltr2,
-                                                                                                                    '{:.3f}'.format(median_cad1),
-                                                                                                                    '{:.3f}'.format(median_cad2)))
+        print('Obs {0}, {3}+{4}, {1}+{2} filtered datapts, med cadence {5}+{6}'.format(period,len(mjd1),len(mjd2),
+                                                                                       fltr1,fltr2,
+                                                                                       '{:.3f}'.format(median_cad1),
+                                                                                       '{:.3f}'.format(median_cad2)))
 
         # Interpolation time step (days). Must be less than the average cadence of the observations, but too small will introduce noise.
         # Consider the lowest median cadence from both curves and round down to nearest 1/20 days,
@@ -87,8 +94,10 @@ def PyCCF(model,fltr1,fltr2,overwrite=False):
         
         print('Using lag_range={} days, interp={} days, nsim={}, thres={}'.format(lag_range,'{:.2f}'.format(interp),nsim,thres))
 
-        mcmode = 0                  #Do both FR/RSS sampling (1 = RSS only, 2 = FR only) 
-        #Choose the threshold for considering a measurement "significant".
+        # Do both FR/RSS sampling (1 = RSS only, 2 = FR only) 
+        mcmode = 0
+
+        # Choose the threshold for considering a measurement "significant".
         # sigmode = 0.2 will consider all CCFs with r_max <= 0.2 as "failed". See code for different sigmodes.
         sigmode = 0.2  
 

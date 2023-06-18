@@ -20,6 +20,7 @@ AGN_NAMES = [ agn.name for agn in os.scandir(PROJECTDIR) if agn.is_dir()
 FUNCTION_MAPPING = {
     # PyROA functions adapted from https://github.com/FergusDonnan/PyROA
     'calibrate': AGNLCLib.InterCalibrateFilt,
+    'calibrate_plot': AGNLCLib.CalibrationPlot,
     'fit': AGNLCLib.Fit,
     # Uses PYCCF code adapted from https://bitbucket.org/cgrier/python_ccf_code/src/master/
     'ccf': AGNLCLib.PyCCF }
