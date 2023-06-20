@@ -1121,6 +1121,11 @@ def ConvergencePlot(model,overwrite=False):
     add_ext = '_{}'.format(roa_params['model'])
     if select_period:
         add_ext = add_ext + '_{}'.format(select_period)
+
+    output_file = '{}/ROA_Convergence{}.pdf'.format(config.output_dir(),add_ext)
+    if Utils.check_file(output_file) == True and overwrite==False:
+        print('Not running ROA ConvergencePlot, file exists: {}'.format(output_file))
+        return
     
     filehandler = open('{}/samples_flat{}.obj'.format(config.output_dir(),add_ext),"rb")
     samples = pickle.load(filehandler)
@@ -1131,8 +1136,6 @@ def ConvergencePlot(model,overwrite=False):
 
     # Compute the estimators for a few different chain lengths
     N = np.exp(np.linspace(np.log(init_chain_length), np.log(chain.shape[0]), 10)).astype(int)
-    #print(N.min(),N.max())
-    #print(init_chain_length,chain.shape[0])
     chain = samples.T
     gw2010 = np.empty(len(N))
     new = np.empty(len(N))
@@ -1151,12 +1154,7 @@ def ConvergencePlot(model,overwrite=False):
     plt.ylabel(r"$\tau$ estimates")
     plt.legend(fontsize=14)
 
-    convergence_plot = '{}/roa_convergence{}.pdf'.format(config.output_dir(),add_ext)
-    if Utils.check_file(convergence_plot) == True and overwrite==False:
-        print('Not running ConvergencePlot, file exists: {}'.format(convergence_plot))
-        return
-
-    plt.savefig(convergence_plot)
+    plt.savefig(output_file)
     plt.show()
     return
 
