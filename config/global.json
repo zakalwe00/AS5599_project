@@ -20,8 +20,8 @@
     "CCF": {
 	"MC_Iterations": 10000,
 	"Centroid_Threshold": 0.8,
-	"sig_level": 3,
-	"flux_jump_sig_level": 2.0,
+	"sig_level": 3.0,
+	"flux_jump_sig_level": 3.0,
         "lag_range": [
             -15.0,
             15.0
@@ -43,7 +43,7 @@
 	"sig_level": 4.0,
 	"use_backend": false,
 	"resume_progress": false,
-	"plot_corner": false
+	"plot_corner": true
     },
     "ROA_Model1": {
 	"delay_dist": false,

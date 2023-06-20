@@ -110,6 +110,7 @@ def PyCCF(model,fltr1,fltr2,overwrite=False):
                                                                                                                                                 lag_range[0],lag_range[1],interp,thres=thres,
                                                                                                                                                 nsim=nsim,mcmode=mcmode,sigmode=sigmode)
 
+
         lag = ccf_pack[1]
         r = ccf_pack[0]
 

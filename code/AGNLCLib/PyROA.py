@@ -11,6 +11,8 @@ import emcee
 import pickle
 import matplotlib
 import matplotlib.pyplot as plt
+matplotlib.rc('xtick', labelsize=12) 
+matplotlib.rc('ytick', labelsize=12) 
 import scipy.interpolate as interpolate
 import scipy.special as special
 from scipy import signal
@@ -23,7 +25,7 @@ def InterCalibrateFilt(model,fltr,overwrite=False):
 
     # references for convenience
     config = model.config()
-    params = config.calibration_params()
+    calib_params = config.calibration_params()
 
     # local variables
     scopes_array = []
@@ -70,7 +72,7 @@ def InterCalibrateFilt(model,fltr,overwrite=False):
         labels_chunks[i][1] = "B"+str(i+1)        
         labels_chunks[i][2] = "\u03C3"+str(i+1)                
         
-    pos_chunks[-1][0] = params['init_delta']
+    pos_chunks[-1][0] = calib_params['init_delta']
     labels_chunks[-1][0] = "\u0394"
     #Store initial values for use in prior
     init_params_chunks = pos_chunks
@@ -85,18 +87,18 @@ def InterCalibrateFilt(model,fltr,overwrite=False):
     pos = 1e-4 * np.random.randn(int(2.0*Npar), int(Npar)) + pos
     print("NWalkers="+str(int(2.0*Npar)))
     nwalkers, ndim = pos.shape
-    sig_level = params['sig_level']
+    sig_level = calib_params['sig_level']
     
     # 12 threads works if 12 virtual cores available
     # Reduce memory usage -> 6 threads 2023/06/14 as turgon has very little memory(?)
     with Pool(8) as pool:
         sampler = emcee.EnsembleSampler(nwalkers, ndim, Utils.log_probability_calib, 
-                                        args=(data, [params['delta_prior'], params['sigma_prior']],
+                                        args=(data, [calib_params['delta_prior'], calib_params['sigma_prior']],
                                               sig_level, init_params_chunks), pool=pool)
-        sampler.run_mcmc(pos, params['Nsamples'], progress=True);
+        sampler.run_mcmc(pos, calib_params['Nsamples'], progress=True);
 
     #Extract samples with burn-in of 10000 (default setting, see global.json)
-    samples_flat = sampler.get_chain(discard=params['Nburnin'], thin=15, flat=True)
+    samples_flat = sampler.get_chain(discard=calib_params['Nburnin'], thin=15, flat=True)
                 
     samples = sampler.get_chain()
                 
@@ -241,7 +243,7 @@ def InterCalibrateFilt(model,fltr,overwrite=False):
                 "font.family": "Sans", 
                 "font.serif": ["DejaVu"],
                 "figure.figsize":[20,10],
-                "font.size": 20})          
+                "font.size": 14})
         
             #Plot calibrated ontop of original lcs
             plt.title(str(fltr))
@@ -264,17 +266,17 @@ def InterCalibrateFilt(model,fltr,overwrite=False):
         output_file = '{}/{}_Calibration_CornerPlot.pdf'.format(config.output_dir(),fltr)
             
         if (os.path.exists(output_file) == False) or (overwrite == True):
-            plt.rcParams.update({'font.size': 15})
+            plt.rcParams.update({'font.size': 7})
             #Save Cornerplot to figure
             fig = corner.corner(samples_flat, labels=labels, quantiles=[0.16, 0.5, 0.84], show_titles=True,
-                                title_kwargs={"fontsize": 20}, truths=params);
+                                title_kwargs={"fontsize": 8}, truths=params);
             print('Writing calibration corner plot {}'.format(output_file))
             plt.savefig(output_file)
             plt.close();
            
     return
 
-def Fit(model):
+def Fit(model, overwrite=False):
     config = model.config()
     roa_params = config.roa_params()
 
@@ -328,7 +330,16 @@ def Fit(model):
         if select_period not in period_to_mjd_range:
             raise Exception('Error: selected period {} not in observation periods for {}, check config'.format(select_period,config.agn_name()))
         mjd_range = config.observation_params()['periods'][select_period]['mjd_range']
-        
+
+    add_ext = '_{}'.format(roa_params['model'])
+    if select_period:
+        add_ext = add_ext + '_{}'.format(select_period)
+
+    output_file = '{}/samples_flat{}.obj'.format(config.output_dir(),add_ext)
+    if Utils.check_file(output_file) == True and overwrite==False:
+        print('Not running ROA Fit, file exists: {}'.format(output_file))
+        return
+    
     data = []
     for fltr in fltrs:
         calib_file = '{}/{}_{}.dat'.format(config.output_dir(),config.agn_name(),fltr)
@@ -541,9 +552,9 @@ def Fit(model):
         backend = None
 
     # 12 threads works if 12 virtual cores available
-    # Reduce memory usage -> 4 threads 2023/06/18
+    # Reduce memory usage -> 8 threads 2023/06/18
 
-    with Pool(4) as pool:
+    with Pool(8) as pool:
 
         sampler = emcee.EnsembleSampler(nwalkers, ndim, Utils.log_probability, args=[data, priors, add_var, size,sig_level, include_slow_comp, slow_comp_delta, P_func, slow_comps, P_slow, init_delta, delay_dist, psi_types, accretion_disk, wavelengths, integral, integral2, init_params_chunks], pool=pool, backend=backend)
         sampler.run_mcmc(pos, Nsamples, progress=True);
@@ -818,13 +829,13 @@ def Fit(model):
     print(tabulate([params], headers=labels))
     
     #Write samples to file
-    add_ext = '_{}'.format(roa_params['model'])
-    if mjd_range:
-        add_ext = add_ext + '_{}'.format(select_period)
     filehandler = open('{}/samples_flat{}.obj'.format(config.output_dir(),add_ext),"wb")
     pickle.dump(samples_flat,filehandler)
     filehandler = open('{}/samples{}.obj'.format(config.output_dir(),add_ext),"wb")
     pickle.dump(samples,filehandler)
+
+    filehandler = open('{}/labels{}.obj'.format(config.output_dir(),add_ext),"wb")
+    pickle.dump(labels,filehandler)
 
     filehandler = open('{}/X_t{}.obj'.format(config.output_dir(),add_ext),"wb")
     pickle.dump([t, m, errs],filehandler)
@@ -835,21 +846,213 @@ def Fit(model):
     filehandler = open('{}/Lightcurves_models{}.obj'.format(config.output_dir(),add_ext),"wb")
     pickle.dump(models,filehandler)
     
-    if plot_corner:
-        #Plot Corner Plot
-        plt.rcParams.update({'font.size': 15})
-        #Save Cornerplot to figure
-        fig = corner.corner(samples_flat, labels=labels, quantiles=[0.16, 0.5, 0.84], show_titles=True, title_kwargs={"fontsize": 20});
-        fig.savefig('{}/ROACornerPlot_{}{}.pdf'.format(config.output_dir(),params["model"],add_ext),"wb")
-        plt.close();
-        
-    return samples, samples_flat, t, m, errs, slow_comps_out, params, models
+    return
 
 
 ########################################
 # Diagnostic Graphs                    #
 ########################################
+def FitPlot(model,overwrite=False):
 
+    config = model.config()
+    roa_params = config.roa_params()
+    ccf_params = config.ccf_params()
+
+    add_var = roa_params["add_var"]
+    sig_level = roa_params["sig_level"]
+    delay_ref = roa_params["delay_ref"]
+    plot_corner = roa_params["plot_corner"]
+    roa_model = roa_params["model"]
+    select_period = roa_params.get("select_period",None)
+    mjd_range = None
+
+    ccf_flux_jump_sig_level = ccf_params.get('flux_jump_sig_level',None)
+    ccf_sig_level = ccf_params['sig_level']
+    
+    # We might chose to run the ROA for a single obervation period
+    if select_period:
+        period_to_mjd_range = config.observation_params()['periods']
+        if select_period not in period_to_mjd_range:
+            raise Exception('Error: selected period {} not in observation periods for {}, check config'.format(select_period,config.agn_name()))
+        mjd_range = config.observation_params()['periods'][select_period]['mjd_range']
+
+    exclude_fltrs = roa_params["exclude_fltrs"]    
+    fltrs = config.fltrs()
+
+    fltrs = [fltr for fltr in fltrs if fltr not in exclude_fltrs and fltr != delay_ref]
+    fltrs = [delay_ref] + fltrs
+
+    if len(fltrs) == 0:
+        raise Exception('Insufficient filter bands passed to PyROA FitPlot: {} with reference filter {}'.format(fltrs,delay_ref))
+    
+    add_ext = '_{}'.format(roa_model)
+    if select_period:
+        add_ext = add_ext + '_{}'.format(select_period)
+    
+    output_file = '{}/ROA_LCs{}.pdf'.format(config.output_dir(),add_ext)
+    if Utils.check_file(output_file) == True and overwrite==False:
+        print('Not running ROA FitPlot, file exists: {}'.format(output_file))
+        return
+    
+    plt.rcParams.update({
+        "font.family": "Sans",  
+        "font.serif": ["DejaVu"],
+        "figure.figsize":[40,30],
+        "font.size": 14})  
+
+    filehandler = open('{}/samples_flat{}.obj'.format(config.output_dir(),add_ext),"rb")
+    samples_flat = pickle.load(filehandler)
+        
+    filehandler = open('{}/samples{}.obj'.format(config.output_dir(),add_ext),"rb")
+    samples = pickle.load(filehandler)
+
+    filehandler = open('{}/labels{}.obj'.format(config.output_dir(),add_ext),"rb")
+    labels = pickle.load(filehandler)
+
+    filehandler = open('{}/Lightcurves_models{}.obj'.format(config.output_dir(),add_ext),"rb")
+    models = pickle.load(filehandler)
+    
+    #Split samples into chunks, 4 per lightcurve i.e A, B, tau, sig
+    chunk_size = 4
+    transpose_samples = np.transpose(samples_flat)
+    #Insert zero where tau_0 would be 
+    transpose_samples = np.insert(transpose_samples, [2], np.array([0.0]*len(transpose_samples[1])), axis=0)
+    samples_chunks = [transpose_samples[i:i + chunk_size] for i in range(0, len(transpose_samples), chunk_size)] 
+
+    fig = plt.figure(5)
+    gs = fig.add_gridspec(len(fltrs), 1, hspace=0, wspace=0)
+    band_colors=["royalblue", "darkcyan", "olivedrab", "maroon", "#ff6f00", "#ef0000", "#610000"]
+
+    # get tau,mjd distribution extents
+    tau_min = 0.0
+    tau_max = 0.0
+    mjd_min = mjd_max = np.mean(mjd_range)
+    
+    # samples_chunks is length filters+1
+    for i in range(len(fltrs)):
+        sc = samples_chunks[i]
+        tau_min = np.minimum(np.min(sc[2]), tau_min)
+        tau_max = np.maximum(np.max(sc[2]), tau_max)
+        
+    data = []
+    ccf_data = []
+    #Loop over lightcurves
+    for i,fltr in enumerate(fltrs):
+        df_to_numpy = None
+        calib_file = '{}/{}_{}.dat'.format(config.output_dir(),config.agn_name(),fltr)
+        if Utils.check_file(calib_file,exit=True):
+            # get mjd flux err from the calibration file as a numpy array of first three columns
+            df = pd.read_csv(calib_file,
+                             header=None,index_col=None,
+                             quoting=csv.QUOTE_NONE,
+                             delim_whitespace=True).sort_values(0).loc[:,0:2]
+            # filter datapoints with large error
+            df = Utils.filter_large_sigma(df,ccf_sig_level,fltr)
+        
+            # filter datapoints with large flux jumps either side
+            if ccf_flux_jump_sig_level:
+                df = Utils.filter_large_sigma_jumps(df,ccf_flux_jump_sig_level,fltr)
+            
+            # Constrain to a single observation period if specified
+            if mjd_range:
+                df = df[np.logical_and(df[0] > mjd_range[0],
+                                       df[0] < mjd_range[1])]
+
+            df_to_numpy = df.to_numpy()
+            
+        mjd_min = np.minimum(np.min(df_to_numpy[:,0]), mjd_min)
+        mjd_max = np.maximum(np.max(df_to_numpy[:,0]), mjd_max)
+        data.append(df_to_numpy)
+
+        tlags_centroid = None
+        if i > 0 and select_period is not None:
+            centroidfile = '{}/Centroid_{}_{}_{}.dat'.format(config.output_dir(),select_period,delay_ref,fltr)
+            if (Utils.check_file(centroidfile) == True):
+                df = pd.read_csv(centroidfile,
+                                 header=None,index_col=None,
+                                 quoting=csv.QUOTE_NONE,
+                                 delim_whitespace=True)
+                tlags_centroid = df[0].to_numpy()
+#                tau_min = np.minimum(np.min(tlags_centroid), tau_min)
+#                tau_max = np.maximum(np.max(tlags_centroid), tau_max)
+            else:
+                print('No CCF data available for plot at {}'.format(centroidfile))
+        ccf_data.append(tlags_centroid)
+
+        
+    ilast = len(fltrs) - 1
+    for i,fltr in enumerate(fltrs):        
+        mjd = data[i][:,0]
+        flux = data[i][:,1]
+        err = data[i][:,2]
+
+        # Add extra variance
+        sig = np.percentile(samples_chunks[i][-1], 50)
+        err = np.sqrt(err**2 + sig**2)
+
+        # Organise subplot layout
+        #ax = fig.add_subplot(gs[i])
+        
+        gssub = gs[i].subgridspec(1, 2, width_ratios=[5, 1])
+        ax0 = fig.add_subplot(gssub[0,0])
+        ax1 = fig.add_subplot(gssub[0,1])
+
+        # Plot Data
+        ax0.errorbar(mjd, flux , yerr=err, ls='none', marker=".", color=band_colors[i], ms=2, elinewidth=0.75)
+        # Plot Model
+        t, m, errs = models[i]
+        ax0.plot(t,m, color="black", lw=1)
+        ax0.fill_between(t, m+errs, m-errs, alpha=0.5, color="black")
+        ax0.set_ylabel("Flux ({})".format(fltr),rotation=0,labelpad=30)
+        ax0.set_xlim(mjd_min,mjd_max)
+        
+        # Plot Time delay posterior distributions
+        tau_samples = samples_chunks[i][2]
+        ax1.hist(tau_samples, color=band_colors[i], bins=50)
+        ax1.axvline(x = np.percentile(tau_samples, [16, 50, 84])[1], color="black",lw=0.5)
+        ax1.axvline(x = np.percentile(tau_samples, [16, 50, 84])[0] , color="black", ls="--",lw=0.5)
+        ax1.axvline(x = np.percentile(tau_samples, [16, 50, 84])[2], color="black",ls="--",lw=0.5)
+        ax1.axvline(x = 0, color="black",ls="--")    
+        ax1.yaxis.set_tick_params(labelleft=False)
+        ax1.set_xlim(tau_min,tau_max)
+        if ccf_data[i] is not None:
+            ax1.hist(ccf_data[i], bins = 50, color = 'grey')
+        
+        if i == ilast:
+            ax0.set_xlabel("Time")
+            ax0.label_outer()
+        else:
+            ax1.xaxis.set_tick_params(labelbottom=False)
+        
+        ax1.set_yticks([])
+
+        if i == 0:
+            title_ext = roa_model
+            if select_period:
+                title_ext = title_ext + ' {}'.format(select_period)
+            fig.suptitle('{} Lightcurves {}'.format(config.agn_name(), title_ext))
+
+    plt.subplots_adjust(wspace=0)
+    
+    print('Writing {}'.format(output_file))
+    plt.savefig(output_file)
+    plt.show()
+#    plt.close()
+
+    if plot_corner:
+        #Plot Corner Plot
+        plt.rcParams.update({'font.size': 14})
+        #Save Cornerplot to figure
+        fig = corner.corner(samples_flat, labels=labels, quantiles=[0.16, 0.5, 0.84], show_titles=True, title_kwargs={"fontsize": 16});
+        output_corner_plot = '{}/ROACornerPlot{}.pdf'.format(config.output_dir(),add_ext)
+        print('Writing calibration corner plot {}'.format(output_corner_plot))
+        plt.savefig(output_corner_plot)
+        plt.show()
+#        plt.close()
+
+    return
+
+    
 def CalibrationPlot(model,overwrite=True):
 
     config = model.config()
@@ -868,14 +1071,14 @@ def CalibrationPlot(model,overwrite=True):
         "font.family": "Sans",  
         "font.serif": ["DejaVu"],
         "figure.figsize":[40,15],
-        "font.size": 40})
+        "font.size": 14})
     fig, axs = plt.subplots(len(fltrs),sharex=True)
     fig.suptitle('{} Calibrated light curves'.format(config.agn_name()))
     for i,fltr in enumerate(fltrs):
         calib_file = '{}/{}_{}.dat'.format(config.output_dir(),config.agn_name(),fltr)
         data.append(pd.read_csv(calib_file,
                                 header=None,index_col=None,
-                                quoting=csv.QUOTE_NONE,delim_whitespace=True)).sort_values(0)
+                                quoting=csv.QUOTE_NONE,delim_whitespace=True).sort_values(0))
         mjd = data[i][0]
         flux = data[i][1]
         err = data[i][2]
@@ -883,8 +1086,277 @@ def CalibrationPlot(model,overwrite=True):
         axs[i].set_ylabel('{} filter flux'.format(fltr))
 
     axs[-1].set_xlabel('Time (days, MJD)')
-
     print('Writing {}'.format(calib_curve_plot))
     plt.savefig(calib_curve_plot)
+    plt.close()
 
+    return
 
+def ConvergencePlot(model,overwrite=False):
+
+    config = model.config()
+    roa_params = config.roa_params()
+
+    Nsamples = roa_params["Nsamples"]
+    Nburnin = roa_params["Nburnin"]
+
+    select_period = roa_params.get("select_period",None)
+    mjd_range = None
+    
+    # tau initialisation by filter
+    delay_ref = roa_params["delay_ref"]
+    exclude_fltrs = roa_params["exclude_fltrs"]    
+    fltrs = config.fltrs()
+    
+    fltrs = [fltr for fltr in fltrs if fltr not in exclude_fltrs and fltr != delay_ref]
+    fltrs = [delay_ref] + fltrs
+
+    # We might chose to run the ROA for a single obervation period
+    if select_period:
+        period_to_mjd_range = config.observation_params()['periods']
+        if select_period not in period_to_mjd_range:
+            raise Exception('Error: selected period {} not in observation periods for {}, check config'.format(select_period,config.agn_name()))
+        mjd_range = config.observation_params()['periods'][select_period]['mjd_range']
+
+    add_ext = '_{}'.format(roa_params['model'])
+    if select_period:
+        add_ext = add_ext + '_{}'.format(select_period)
+    
+    filehandler = open('{}/samples_flat{}.obj'.format(config.output_dir(),add_ext),"rb")
+    samples = pickle.load(filehandler)
+    
+    init_chain_length=100
+        
+    chain = samples[Nburnin:,:]
+
+    # Compute the estimators for a few different chain lengths
+    N = np.exp(np.linspace(np.log(init_chain_length), np.log(chain.shape[0]), 10)).astype(int)
+    #print(N.min(),N.max())
+    #print(init_chain_length,chain.shape[0])
+    chain = samples.T
+    gw2010 = np.empty(len(N))
+    new = np.empty(len(N))
+    for i, n in enumerate(N):
+        gw2010[i] = Utils.autocorr_gw2010(chain[:, :n])
+        new[i] = Utils.autocorr_new(chain[:, :n])
+
+    fig = plt.figure(figsize=(8,6))
+    # Plot the comparisons
+    plt.loglog(N, gw2010, "o-", label="G&W 2010")
+    plt.loglog(N, new, "o-", label="new")
+    ylim = plt.gca().get_ylim()
+    plt.plot(N, N / 50., "--k", label=r"$\tau = N/50$")
+    plt.ylim(ylim)
+    plt.xlabel("number of samples, $N$")
+    plt.ylabel(r"$\tau$ estimates")
+    plt.legend(fontsize=14)
+
+    convergence_plot = '{}/roa_convergence{}.pdf'.format(config.output_dir(),add_ext)
+    if Utils.check_file(convergence_plot) == True and overwrite==False:
+        print('Not running ConvergencePlot, file exists: {}'.format(convergence_plot))
+        return
+
+    plt.savefig(convergence_plot)
+    plt.show()
+    return
+
+def ChainsPlot(model,select='tau',start_sample=0,overwrite=False):
+    config = model.config()
+    roa_params = config.roa_params()
+
+    delay_ref = roa_params["delay_ref"]
+    roa_model = roa_params["model"]
+    Nburnin = roa_params["Nburnin"]
+    select_period = roa_params.get("select_period",None)
+    mjd_range = None
+
+    # We might chose to run the ROA for a single obervation period
+    if select_period:
+        period_to_mjd_range = config.observation_params()['periods']
+        if select_period not in period_to_mjd_range:
+            raise Exception('Error: selected period {} not in observation periods for {}, check config'.format(select_period,config.agn_name()))
+        mjd_range = config.observation_params()['periods'][select_period]['mjd_range']
+
+    exclude_fltrs = roa_params["exclude_fltrs"]    
+    fltrs = config.fltrs()
+
+    fltrs = [fltr for fltr in fltrs if fltr not in exclude_fltrs and fltr != delay_ref]
+    fltrs = [delay_ref] + fltrs
+
+    if len(fltrs) == 0:
+        raise Exception('Insufficient filter bands passed to PyROA FitPlot: {} with reference filter {}'.format(fltrs,delay_ref))
+    
+    add_ext = '_{}'.format(roa_model)
+    if select_period:
+        add_ext = add_ext + '_{}'.format(select_period)
+    
+    output_file = '{}/ROA_Chains{}_{}.pdf'.format(config.output_dir(),add_ext,select)
+    if Utils.check_file(output_file) == True and overwrite==False:
+        print('Not running ROA ChainsPlot, file exists: {}'.format(output_file))
+        return
+
+    filehandler = open('{}/samples_flat{}.obj'.format(config.output_dir(),add_ext),"rb")
+    samples = pickle.load(filehandler)
+
+    # Plot each parameter
+    labels = []
+    for i in range(len(fltrs)):
+        for j in ["A", "B",r"$\tau$", r"$\sigma$"]:
+            labels.append(j+r'$_{'+fltrs[i]+r'}$')
+    labels.append(r'$\Delta$')
+    all_labels = labels.copy()
+    del labels[2]
+    print(labels)
+    
+    if type(select ) is int:
+        ndim = select
+        fig, axes = plt.subplots(ndim, figsize=(10, 2*ndim), sharex=True)
+        #samples = sampler.get_chain()
+        #labels = ["A", "B",r"$\tau$", r"$\sigma$"]
+        ct = 0
+        for i in range(start_sample,start_sample+ndim):
+            ax = axes[ct]
+            ax.plot(samples[:, i], "k", alpha=0.3)
+            ax.set_xlim(0, len(samples))
+            #ax.set_ylabel("Param "+str(start_sample+i))
+            #print(i,labels[i])
+            ax.set_ylabel(labels[i])
+            ax.yaxis.set_label_coords(-0.1, 0.5)
+            ct += 1
+        axes[-1].set_xlabel("Chain number")
+    elif (select == 'all'):
+        ndim = samples.shape[1]
+        fig, axes = plt.subplots(ndim, figsize=(10, 2*ndim), sharex=True)
+        #samples = sampler.get_chain()
+        #labels = ["A", "B",r"$\tau$", r"$\sigma$"]
+        ct = 0
+        for i in range(ndim):
+            ax = axes[ct]
+            ax.plot(samples[:, i], "k", alpha=0.3)
+            ax.set_xlim(0, len(samples))
+            #ax.set_ylabel("Param "+str(start_sample+i))
+            #print(i,labels[i])
+            ax.set_ylabel(labels[i])
+            ax.yaxis.set_label_coords(-0.1, 0.5)
+            ct += 1
+            axes[-1].set_xlabel("Chain number")
+    elif (select == 'tau') or (select == 'A') or (select == 'B') or (select == 'sig'):
+        if select == 'A': shifter = 0
+        if select == 'B': shifter = 1
+        if select == 'tau': shifter = 2
+        if select == 'sig': shifter = 3
+        ndim = len(fltrs)
+        fig, axes = plt.subplots(ndim-1, figsize=(10, 2*ndim), sharex=True)
+        #samples = sampler.get_chain()
+        #labels = ["A", "B",r"$\tau$", r"$\sigma$"]
+        ct = 0
+        mm = 0
+        for i in range(ndim):
+            if i != 0:
+                ax = axes[ct]
+                ax.plot(samples[:, i*4+shifter+mm], "k", alpha=0.3)
+                ax.set_xlim(0, len(samples))
+                #ax.set_ylabel("Param "+str(start_sample+i))
+                #print(i,all_labels[i*4+shifter])
+                ax.set_ylabel(all_labels[i*4+shifter],fontsize=20)
+                ax.yaxis.set_label_coords(-0.1, 0.5)
+                ct+=1
+            if i == 0:
+                mm = -1
+        axes[-1].set_xlabel("Chain number")
+    elif (select == 'delta'):
+        fig, ax = plt.subplots(1, figsize=(10, 2))
+        #samples = sampler.get_chain()
+        #labels = ["A", "B",r"$\tau$", r"$\sigma$"]
+        ax.plot(samples[:, -1], "k", alpha=0.3)
+        ax.set_xlim(0, len(samples))
+        #ax.set_ylabel("Param "+str(start_sample+i))
+        #print(i,all_labels[-1])
+        ax.set_ylabel(all_labels[-1],fontsize=20)
+        ax.yaxis.set_label_coords(-0.1, 0.5)
+        ax.set_xlabel("Chain number")
+    else:
+        print('Invalid chains select input ({}), no action'.format(select))
+        return
+	
+    plt.savefig(output_file)
+    plt.show()
+#    plt.close()
+    return
+
+def CornerPlot(model,select='tau',overwrite=False):
+    config = model.config()
+    roa_params = config.roa_params()
+
+    delay_ref = roa_params['delay_ref']
+    roa_model = roa_params['model']
+    Nburnin = roa_params['Nburnin']
+    select_period = roa_params.get('select_period',None)
+    mjd_range = None
+
+    # We might chose to run the ROA for a single obervation period
+    if select_period:
+        period_to_mjd_range = config.observation_params()['periods']
+        if select_period not in period_to_mjd_range:
+            raise Exception('Error: selected period {} not in observation periods for {}, check config'.format(select_period,config.agn_name()))
+        mjd_range = config.observation_params()['periods'][select_period]['mjd_range']
+
+    exclude_fltrs = roa_params['exclude_fltrs']    
+    fltrs = config.fltrs()
+
+    fltrs = [fltr for fltr in fltrs if fltr not in exclude_fltrs and fltr != delay_ref]
+    fltrs = [delay_ref] + fltrs
+
+    if len(fltrs) == 0:
+        raise Exception('Insufficient filter bands passed to PyROA FitPlot: {} with reference filter {}'.format(fltrs,delay_ref))
+    
+    add_ext = '_{}'.format(roa_model)
+    if select_period:
+        add_ext = add_ext + '_{}'.format(select_period)
+    
+    output_file = '{}/ROA_Corner{}_{}.pdf'.format(config.output_dir(),add_ext,select)
+    if Utils.check_file(output_file) == True and overwrite==False:
+        print('Not running ROA CornerPlot, file exists: {}'.format(output_file))
+        return
+
+    filehandler = open('{}/samples_flat{}.obj'.format(config.output_dir(),add_ext),'rb')
+    samples = pickle.load(filehandler)
+    samples = samples[Nburnin:,:]
+    
+    labels = []
+    for i in range(len(fltrs)):
+        for j in ['A', 'B',r'$\tau$', r'$\sigma$']:
+            labels.append(j+r'$_{'+fltrs[i]+r'}$')
+    labels.append(r'$\Delta$')
+    all_labels = labels.copy()
+    del labels[2]
+
+    #print(labels)
+    if (select == 'tau') or (select == 'A') or (select == 'B') or (select == 'sig'):
+        if select == 'A': shifter = 0
+        if select == 'B': shifter = 1
+        if select == 'tau': shifter = 2
+        if select == 'sig': shifter = 3
+
+        list_only = []
+        mm = 0
+        for i in range(len(fltrs)):
+            if i != 0:
+                list_only.append(i*4+shifter+mm)
+            if i == 0:
+                mm = -1
+        #print(list_only)
+        #print(np.array(labels)[list_only])
+        gg = corner.corner(samples[:,list_only],show_titles=True,
+                           labels=np.array(labels)[list_only],
+                           title_kwargs={'fontsize':19})
+    elif select == 'all':
+        gg = corner.corner(samples,show_titles=True,labels=labels)
+    else:
+        print('Invalid chains select input ({}), no action'.format(select))
+        return
+	
+    plt.savefig(output_file)
+    plt.show()
+#    plt.close()
+    return
