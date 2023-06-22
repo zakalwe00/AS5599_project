@@ -29,6 +29,8 @@ if __name__ == "__main__":
         print(' '.join(config.fltrs()),end='')
     elif args.arg == 'scopes':
         print(' '.join(config.scopes()),end='')
+    elif args.arg == 'periods':
+        print(' '.join(config.observation_params()['periods']),end='')
 
     exit(0)
 

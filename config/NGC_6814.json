@@ -10,6 +10,8 @@
 	}
     },
     "ROA": {
+	"Nsamples": 50000,
+        "Nburnin": 40000,
 	"reference_filter":"g",
 	"init_tau": {
 	    "g": 0.0,

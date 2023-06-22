@@ -21,7 +21,11 @@ FUNCTION_MAPPING = {
     # PyROA functions adapted from https://github.com/FergusDonnan/PyROA
     'calibrate': AGNLCLib.InterCalibrateFilt,
     'calibrate_plot': AGNLCLib.CalibrationPlot,
-    'fit': AGNLCLib.Fit,
+    'roa': AGNLCLib.Fit,
+    'roa_plot': AGNLCLib.FitPlot,
+    'roa_conv_plot': AGNLCLib.ConvergencePlot,
+    'roa_chains_plot': AGNLCLib.ChainsPlot,
+    'roa_corner_plot': AGNLCLib.CornerPlot,
     # Uses PYCCF code adapted from https://bitbucket.org/cgrier/python_ccf_code/src/master/
     'ccf': AGNLCLib.PyCCF }
 

@@ -276,7 +276,7 @@ def InterCalibrateFilt(model,fltr,overwrite=False):
            
     return
 
-def Fit(model, overwrite=False):
+def Fit(model, overwrite=False, select_period=None):
     config = model.config()
     roa_params = config.roa_params()
 
@@ -299,7 +299,6 @@ def Fit(model, overwrite=False):
     include_slow_comp = roa_params["include_slow_comp"]
     slow_comp_delta = roa_params["slow_comp_delta"]
     delay_dist = roa_params.get("delay_dist",False)
-    select_period = roa_params.get("select_period",None)
     mjd_range = None
     wavelengths = None
     
@@ -324,15 +323,14 @@ def Fit(model, overwrite=False):
     if psi_types_map:
         psi_types = [psi_types_map[fltr] for fltr in fltrs]
 
+    add_ext = '_{}'.format(roa_params['model'])
+
     # We might chose to run the ROA for a single obervation period
     if select_period:
         period_to_mjd_range = config.observation_params()['periods']
         if select_period not in period_to_mjd_range:
             raise Exception('Error: selected period {} not in observation periods for {}, check config'.format(select_period,config.agn_name()))
         mjd_range = config.observation_params()['periods'][select_period]['mjd_range']
-
-    add_ext = '_{}'.format(roa_params['model'])
-    if select_period:
         add_ext = add_ext + '_{}'.format(select_period)
 
     output_file = '{}/samples_flat{}.obj'.format(config.output_dir(),add_ext)
@@ -852,7 +850,7 @@ def Fit(model, overwrite=False):
 ########################################
 # Diagnostic Graphs                    #
 ########################################
-def FitPlot(model,overwrite=False):
+def FitPlot(model,select_period,overwrite=False):
 
     config = model.config()
     roa_params = config.roa_params()
@@ -863,18 +861,16 @@ def FitPlot(model,overwrite=False):
     delay_ref = roa_params["delay_ref"]
     plot_corner = roa_params["plot_corner"]
     roa_model = roa_params["model"]
-    select_period = roa_params.get("select_period",None)
     mjd_range = None
 
     ccf_flux_jump_sig_level = ccf_params.get('flux_jump_sig_level',None)
     ccf_sig_level = ccf_params['sig_level']
     
     # We might chose to run the ROA for a single obervation period
-    if select_period:
-        period_to_mjd_range = config.observation_params()['periods']
-        if select_period not in period_to_mjd_range:
-            raise Exception('Error: selected period {} not in observation periods for {}, check config'.format(select_period,config.agn_name()))
-        mjd_range = config.observation_params()['periods'][select_period]['mjd_range']
+    period_to_mjd_range = config.observation_params()['periods']
+    if select_period not in period_to_mjd_range:
+        raise Exception('Error: selected period {} not in observation periods for {}, check config'.format(select_period,config.agn_name()))
+    mjd_range = config.observation_params()['periods'][select_period]['mjd_range']
 
     exclude_fltrs = roa_params["exclude_fltrs"]    
     fltrs = config.fltrs()
@@ -884,11 +880,9 @@ def FitPlot(model,overwrite=False):
 
     if len(fltrs) == 0:
         raise Exception('Insufficient filter bands passed to PyROA FitPlot: {} with reference filter {}'.format(fltrs,delay_ref))
-    
-    add_ext = '_{}'.format(roa_model)
-    if select_period:
-        add_ext = add_ext + '_{}'.format(select_period)
-    
+
+    add_ext = '_{}_{}'.format(roa_params['model'],select_period)
+
     output_file = '{}/ROA_LCs{}.pdf'.format(config.output_dir(),add_ext)
     if Utils.check_file(output_file) == True and overwrite==False:
         print('Not running ROA FitPlot, file exists: {}'.format(output_file))
@@ -900,16 +894,22 @@ def FitPlot(model,overwrite=False):
         "figure.figsize":[40,30],
         "font.size": 14})  
 
-    filehandler = open('{}/samples_flat{}.obj'.format(config.output_dir(),add_ext),"rb")
+    samples_file = '{}/samples_flat{}.obj'.format(config.output_dir(),add_ext)
+    if Utils.check_file(samples_file) == False:
+        input_ext = '_{}'.format(roa_model)
+    else:
+        input_ext = add_ext
+
+    filehandler = open('{}/samples_flat{}.obj'.format(config.output_dir(),input_ext),"rb")
     samples_flat = pickle.load(filehandler)
         
-    filehandler = open('{}/samples{}.obj'.format(config.output_dir(),add_ext),"rb")
+    filehandler = open('{}/samples{}.obj'.format(config.output_dir(),input_ext),"rb")
     samples = pickle.load(filehandler)
 
-    filehandler = open('{}/labels{}.obj'.format(config.output_dir(),add_ext),"rb")
+    filehandler = open('{}/labels{}.obj'.format(config.output_dir(),input_ext),"rb")
     labels = pickle.load(filehandler)
 
-    filehandler = open('{}/Lightcurves_models{}.obj'.format(config.output_dir(),add_ext),"rb")
+    filehandler = open('{}/Lightcurves_models{}.obj'.format(config.output_dir(),input_ext),"rb")
     models = pickle.load(filehandler)
     
     #Split samples into chunks, 4 per lightcurve i.e A, B, tau, sig
@@ -924,9 +924,10 @@ def FitPlot(model,overwrite=False):
     band_colors=["royalblue", "darkcyan", "olivedrab", "maroon", "#ff6f00", "#ef0000", "#610000"]
 
     # get tau,mjd distribution extents
-    tau_min = 0.0
     tau_max = 0.0
-    mjd_min = mjd_max = np.mean(mjd_range)
+    tau_min = 99999999.0
+    mjd_max = 0.0
+    mjd_min = 99999999.0
     
     # samples_chunks is length filters+1
     for i in range(len(fltrs)):
@@ -954,9 +955,8 @@ def FitPlot(model,overwrite=False):
                 df = Utils.filter_large_sigma_jumps(df,ccf_flux_jump_sig_level,fltr)
             
             # Constrain to a single observation period if specified
-            if mjd_range:
-                df = df[np.logical_and(df[0] > mjd_range[0],
-                                       df[0] < mjd_range[1])]
+            df = df[np.logical_and(df[0] > mjd_range[0],
+                                   df[0] < mjd_range[1])]
 
             df_to_numpy = df.to_numpy()
             
@@ -965,7 +965,7 @@ def FitPlot(model,overwrite=False):
         data.append(df_to_numpy)
 
         tlags_centroid = None
-        if i > 0 and select_period is not None:
+        if i > 0:
             centroidfile = '{}/Centroid_{}_{}_{}.dat'.format(config.output_dir(),select_period,delay_ref,fltr)
             if (Utils.check_file(centroidfile) == True):
                 df = pd.read_csv(centroidfile,
@@ -1001,6 +1001,10 @@ def FitPlot(model,overwrite=False):
         ax0.errorbar(mjd, flux , yerr=err, ls='none', marker=".", color=band_colors[i], ms=2, elinewidth=0.75)
         # Plot Model
         t, m, errs = models[i]
+        period_pick = np.logical_and(t >=mjd_min,t <= mjd_max)
+        t = t[period_pick]
+        m = m[period_pick]
+        errs = errs[period_pick]
         ax0.plot(t,m, color="black", lw=1)
         ax0.fill_between(t, m+errs, m-errs, alpha=0.5, color="black")
         ax0.set_ylabel("Flux ({})".format(fltr),rotation=0,labelpad=30)
@@ -1027,9 +1031,7 @@ def FitPlot(model,overwrite=False):
         ax1.set_yticks([])
 
         if i == 0:
-            title_ext = roa_model
-            if select_period:
-                title_ext = title_ext + ' {}'.format(select_period)
+            title_ext = roa_model + ' {}'.format(select_period)
             fig.suptitle('{} Lightcurves {}'.format(config.agn_name(), title_ext))
 
     plt.subplots_adjust(wspace=0)
@@ -1039,15 +1041,16 @@ def FitPlot(model,overwrite=False):
     plt.show()
 #    plt.close()
 
-    if plot_corner:
+# Large corner plot- somewhat nonsensical to produce
+#    if plot_corner:
         #Plot Corner Plot
-        plt.rcParams.update({'font.size': 14})
+#        plt.rcParams.update({'font.size': 14})
         #Save Cornerplot to figure
-        fig = corner.corner(samples_flat, labels=labels, quantiles=[0.16, 0.5, 0.84], show_titles=True, title_kwargs={"fontsize": 16});
-        output_corner_plot = '{}/ROACornerPlot{}.pdf'.format(config.output_dir(),add_ext)
-        print('Writing calibration corner plot {}'.format(output_corner_plot))
-        plt.savefig(output_corner_plot)
-        plt.show()
+#        fig = corner.corner(samples_flat, labels=labels, quantiles=[0.16, 0.5, 0.84], show_titles=True, title_kwargs={"fontsize": 16});
+#        output_corner_plot = '{}/ROACornerPlot{}.pdf'.format(config.output_dir(),add_ext)
+#        print('Writing calibration corner plot {}'.format(output_corner_plot))
+#        plt.savefig(output_corner_plot)
+#        plt.show()
 #        plt.close()
 
     return
@@ -1092,7 +1095,7 @@ def CalibrationPlot(model,overwrite=True):
 
     return
 
-def ConvergencePlot(model,overwrite=False):
+def ConvergencePlot(model,select_period=None,overwrite=False):
 
     config = model.config()
     roa_params = config.roa_params()
@@ -1100,7 +1103,6 @@ def ConvergencePlot(model,overwrite=False):
     Nsamples = roa_params["Nsamples"]
     Nburnin = roa_params["Nburnin"]
 
-    select_period = roa_params.get("select_period",None)
     mjd_range = None
     
     # tau initialisation by filter
@@ -1111,23 +1113,22 @@ def ConvergencePlot(model,overwrite=False):
     fltrs = [fltr for fltr in fltrs if fltr not in exclude_fltrs and fltr != delay_ref]
     fltrs = [delay_ref] + fltrs
 
-    # We might chose to run the ROA for a single obervation period
-    if select_period:
-        period_to_mjd_range = config.observation_params()['periods']
-        if select_period not in period_to_mjd_range:
-            raise Exception('Error: selected period {} not in observation periods for {}, check config'.format(select_period,config.agn_name()))
-        mjd_range = config.observation_params()['periods'][select_period]['mjd_range']
-
     add_ext = '_{}'.format(roa_params['model'])
     if select_period:
-        add_ext = add_ext + '_{}'.format(select_period)
+        add_ext = add_ext = '_{}'.format(select_period)
 
     output_file = '{}/ROA_Convergence{}.pdf'.format(config.output_dir(),add_ext)
     if Utils.check_file(output_file) == True and overwrite==False:
         print('Not running ROA ConvergencePlot, file exists: {}'.format(output_file))
         return
+
+    samples_file = '{}/samples_flat{}.obj'.format(config.output_dir(),add_ext)
+    if Utils.check_file(samples_file) == False:
+        input_ext = '_{}'.format(roa_params['model'])
+    else:
+        input_ext = add_ext
     
-    filehandler = open('{}/samples_flat{}.obj'.format(config.output_dir(),add_ext),"rb")
+    filehandler = open('{}/samples_flat{}.obj'.format(config.output_dir(),input_ext),"rb")
     samples = pickle.load(filehandler)
     
     init_chain_length=100
@@ -1156,16 +1157,17 @@ def ConvergencePlot(model,overwrite=False):
 
     plt.savefig(output_file)
     plt.show()
+#    plt.close()
+    
     return
 
-def ChainsPlot(model,select='tau',start_sample=0,overwrite=False):
+def ChainsPlot(model,select='tau',select_period=None,start_sample=0,overwrite=False):
     config = model.config()
     roa_params = config.roa_params()
 
     delay_ref = roa_params["delay_ref"]
     roa_model = roa_params["model"]
     Nburnin = roa_params["Nburnin"]
-    select_period = roa_params.get("select_period",None)
     mjd_range = None
 
     # We might chose to run the ROA for a single obervation period
@@ -1185,15 +1187,22 @@ def ChainsPlot(model,select='tau',start_sample=0,overwrite=False):
         raise Exception('Insufficient filter bands passed to PyROA FitPlot: {} with reference filter {}'.format(fltrs,delay_ref))
     
     add_ext = '_{}'.format(roa_model)
+
     if select_period:
-        add_ext = add_ext + '_{}'.format(select_period)
+        add_ext = add_ext +  '_{}'.format(select_period)
     
     output_file = '{}/ROA_Chains{}_{}.pdf'.format(config.output_dir(),add_ext,select)
     if Utils.check_file(output_file) == True and overwrite==False:
         print('Not running ROA ChainsPlot, file exists: {}'.format(output_file))
         return
 
-    filehandler = open('{}/samples_flat{}.obj'.format(config.output_dir(),add_ext),"rb")
+    samples_file = '{}/samples_flat{}.obj'.format(config.output_dir(),add_ext)
+    if Utils.check_file(samples_file) == False:
+        input_ext = '_{}'.format(roa_params['model'])
+    else:
+        input_ext = add_ext
+    
+    filehandler = open('{}/samples_flat{}.obj'.format(config.output_dir(),input_ext),"rb")
     samples = pickle.load(filehandler)
 
     # Plot each parameter
@@ -1282,14 +1291,13 @@ def ChainsPlot(model,select='tau',start_sample=0,overwrite=False):
 #    plt.close()
     return
 
-def CornerPlot(model,select='tau',overwrite=False):
+def CornerPlot(model,select='tau',select_period=None,overwrite=False):
     config = model.config()
     roa_params = config.roa_params()
 
     delay_ref = roa_params['delay_ref']
     roa_model = roa_params['model']
     Nburnin = roa_params['Nburnin']
-    select_period = roa_params.get('select_period',None)
     mjd_range = None
 
     # We might chose to run the ROA for a single obervation period
@@ -1317,7 +1325,13 @@ def CornerPlot(model,select='tau',overwrite=False):
         print('Not running ROA CornerPlot, file exists: {}'.format(output_file))
         return
 
-    filehandler = open('{}/samples_flat{}.obj'.format(config.output_dir(),add_ext),'rb')
+    samples_file = '{}/samples_flat{}.obj'.format(config.output_dir(),add_ext)
+    if Utils.check_file(samples_file) == False:
+        input_ext = '_{}'.format(roa_params['model'])
+    else:
+        input_ext = add_ext
+
+    filehandler = open('{}/samples_flat{}.obj'.format(config.output_dir(),input_ext),'rb')
     samples = pickle.load(filehandler)
     samples = samples[Nburnin:,:]
     

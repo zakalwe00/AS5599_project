@@ -28,8 +28,6 @@
         ]
     },
     "ROA": {
-        "Nsamples": 25000,
-        "Nburnin": 15000,
 	"A_prior": [0.5,2.0],
 	"B_prior": [0.5,2.0],
 	"tau_prior": [-15.0,15.0],
@@ -43,7 +41,7 @@
 	"sig_level": 4.0,
 	"use_backend": false,
 	"resume_progress": false,
-	"plot_corner": true
+	"plot_corner": false
     },
     "ROA_Model1": {
 	"delay_dist": false,
@@ -59,7 +57,7 @@
 	"slow_comp_delta": 30.0,
 	"add_var": true
     },
-    "ROA_Model2": {
+    "ROA_Model3": {
 	"delay_dist": false,
         "accretion_disk": true,
 	"include_slow_comp": true,
