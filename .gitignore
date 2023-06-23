@@ -20,6 +20,9 @@ __pycache__/
 *.test
 *tmp/
 */tmp/*
+*.pdf
+*.png
+*.obj
 
 # CSV files
 *.csv

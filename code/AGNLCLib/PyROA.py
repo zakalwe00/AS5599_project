@@ -91,7 +91,7 @@ def InterCalibrateFilt(model,fltr,overwrite=False):
     
     # 12 threads works if 12 virtual cores available
     # Reduce memory usage -> 6 threads 2023/06/14 as turgon has very little memory(?)
-    with Pool(8) as pool:
+    with Pool(4) as pool:
         sampler = emcee.EnsembleSampler(nwalkers, ndim, Utils.log_probability_calib, 
                                         args=(data, [calib_params['delta_prior'], calib_params['sigma_prior']],
                                               sig_level, init_params_chunks), pool=pool)
@@ -552,15 +552,34 @@ def Fit(model, overwrite=False, select_period=None):
     # 12 threads works if 12 virtual cores available
     # Reduce memory usage -> 8 threads 2023/06/18
 
-    with Pool(8) as pool:
+    samples_file = '{}/samples{}.obj'.format(config.output_dir(),add_ext)
+    if Utils.check_file(samples_file) == True:
+        print('Samples file exists- not running MCMC: {}'.format(samples_file))
+        filehandler = open(samples_file,"rb")
+        samples = pickle.load(filehandler)
+        if samples.shape[0] != Nsamples:
+            raise Exception('Tried to load samples from {} as the file exists but Nsamples={} and samples file length is {}'.format(samples_file,Nsamples,samples.shape[0]))
+        # Duplicate the logic from the emcee chains sampler below to contruct samples_flat
+        #v = getattr(self, name)[discard + thin - 1 : self.iteration : thin]
+        #if flat:
+        #    s = list(v.shape[1:])
+        #    s[0] = np.prod(v.shape[:2])
+        #    return v.reshape(s)
+        #return v
+        samples_flat = samples[Nburnin + 14 ::15]
+        ss = list(samples_flat.shape[1:])
+        ss[0] = np.prod(samples_flat.shape[:2])
+        samples_flat = samples_flat.reshape(ss)
+    else:    
+        with Pool(8) as pool:
 
-        sampler = emcee.EnsembleSampler(nwalkers, ndim, Utils.log_probability, args=[data, priors, add_var, size,sig_level, include_slow_comp, slow_comp_delta, P_func, slow_comps, P_slow, init_delta, delay_dist, psi_types, accretion_disk, wavelengths, integral, integral2, init_params_chunks], pool=pool, backend=backend)
-        sampler.run_mcmc(pos, Nsamples, progress=True);
+            sampler = emcee.EnsembleSampler(nwalkers, ndim, Utils.log_probability, args=[data, priors, add_var, size,sig_level, include_slow_comp, slow_comp_delta, P_func, slow_comps, P_slow, init_delta, delay_dist, psi_types, accretion_disk, wavelengths, integral, integral2, init_params_chunks], pool=pool, backend=backend)
+            sampler.run_mcmc(pos, Nsamples, progress=True);
 
-    # Extract samples with some (configured) burnin, usually Nburnin=10000
-    samples_flat = sampler.get_chain(discard=Nburnin, thin=15, flat=True)
+            # Extract samples with some (configured) burnin, usually Nburnin=10000
+            samples_flat = sampler.get_chain(discard=Nburnin, thin=15, flat=True)
     
-    samples = sampler.get_chain()
+            samples = sampler.get_chain()
 
     ##############################################################
     # Repeat data shifting and ROA fit using best fit parameters #
@@ -660,14 +679,12 @@ def Fit(model, overwrite=False, select_period=None):
             
         if (delay_dist == True and accretion_disk == False):
             #if (PowerLaw == False):
+            tau_rms=0.0
             if (i>0):
                 tau_rms = np.percentile(samples_chunks[i][3], [16, 50, 84])[1]
-                params.append([tau_rms])
-            else:
-                tau_rms=0.0
-                params.append([0.0])
            # else:
                # tau_rms =  np.percentile(samples_chunks[-1][1], [16, 50, 84])[1]*(((wavelengths[i]/wavelengths[0]) - 0.999)** np.percentile(samples_chunks[-1][2], [16, 50, 84])[1])               
+            params.append([tau_rms])
             
         if (add_var == True):
             V =  np.percentile(samples_chunks[i][-1], [16, 50, 84])[1]
@@ -822,7 +839,7 @@ def Fit(model, overwrite=False, select_period=None):
         prev = int(prev + len(mjd))
         
     print('')
-    print('')   
+    print('')
     print('Best Fit Parameters')
     print(tabulate([params], headers=labels))
     
@@ -951,8 +968,8 @@ def FitPlot(model,select_period,overwrite=False):
             df = Utils.filter_large_sigma(df,ccf_sig_level,fltr)
         
             # filter datapoints with large flux jumps either side
-            if ccf_flux_jump_sig_level:
-                df = Utils.filter_large_sigma_jumps(df,ccf_flux_jump_sig_level,fltr)
+#            if ccf_flux_jump_sig_level:
+#                df = Utils.filter_large_sigma_jumps(df,ccf_flux_jump_sig_level,fltr)
             
             # Constrain to a single observation period if specified
             df = df[np.logical_and(df[0] > mjd_range[0],
@@ -973,12 +990,14 @@ def FitPlot(model,select_period,overwrite=False):
                                  quoting=csv.QUOTE_NONE,
                                  delim_whitespace=True)
                 tlags_centroid = df[0].to_numpy()
-#                tau_min = np.minimum(np.min(tlags_centroid), tau_min)
-#                tau_max = np.maximum(np.max(tlags_centroid), tau_max)
+                tau_min = np.minimum(np.min(tlags_centroid), tau_min)
+                tau_max = np.maximum(np.max(tlags_centroid), tau_max)
             else:
                 print('No CCF data available for plot at {}'.format(centroidfile))
         ccf_data.append(tlags_centroid)
 
+    tau_min = np.maximum(tau_min,-2.0)
+    tau_max = np.minimum(tau_max,2.0)
         
     ilast = len(fltrs) - 1
     for i,fltr in enumerate(fltrs):        
@@ -1132,17 +1151,15 @@ def ConvergencePlot(model,select_period=None,overwrite=False):
     samples = pickle.load(filehandler)
     
     init_chain_length=100
-        
-    chain = samples[Nburnin:,:]
 
     # Compute the estimators for a few different chain lengths
-    N = np.exp(np.linspace(np.log(init_chain_length), np.log(chain.shape[0]), 10)).astype(int)
+    N = np.exp(np.linspace(np.log(init_chain_length), np.log(samples.shape[0]), 10)).astype(int)
     chain = samples.T
     gw2010 = np.empty(len(N))
     new = np.empty(len(N))
-    for i, n in enumerate(N):
-        gw2010[i] = Utils.autocorr_gw2010(chain[:, :n])
-        new[i] = Utils.autocorr_new(chain[:, :n])
+    for ii, nn in enumerate(N):
+        gw2010[ii] = Utils.autocorr_gw2010(chain[:, :nn])
+        new[ii] = Utils.autocorr_new(chain[:, :nn])
 
     fig = plt.figure(figsize=(8,6))
     # Plot the comparisons
@@ -1196,15 +1213,23 @@ def ChainsPlot(model,select='tau',select_period=None,start_sample=0,overwrite=Fa
         print('Not running ROA ChainsPlot, file exists: {}'.format(output_file))
         return
 
-    samples_file = '{}/samples_flat{}.obj'.format(config.output_dir(),add_ext)
+    samples_file = '{}/samples{}.obj'.format(config.output_dir(),add_ext)
     if Utils.check_file(samples_file) == False:
         input_ext = '_{}'.format(roa_params['model'])
     else:
         input_ext = add_ext
     
-    filehandler = open('{}/samples_flat{}.obj'.format(config.output_dir(),input_ext),"rb")
+    filehandler = open('{}/samples{}.obj'.format(config.output_dir(),input_ext),"rb")
     samples = pickle.load(filehandler)
 
+    # flatten the big samples list
+    samples_all_flat = samples[::15]
+    ss = list(samples_all_flat.shape[1:])
+    ss[0] = np.prod(samples_all_flat.shape[:2])
+    samples_all_flat = samples_all_flat.reshape(ss)
+
+    samples = samples_all_flat
+    
     # Plot each parameter
     labels = []
     for i in range(len(fltrs)):
@@ -1333,7 +1358,6 @@ def CornerPlot(model,select='tau',select_period=None,overwrite=False):
 
     filehandler = open('{}/samples_flat{}.obj'.format(config.output_dir(),input_ext),'rb')
     samples = pickle.load(filehandler)
-    samples = samples[Nburnin:,:]
     
     labels = []
     for i in range(len(fltrs)):

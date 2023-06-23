@@ -38,7 +38,7 @@ if [ $CALIBRATE -eq 1 ]
 		  $LAUNCH_SCRIPT $AGN calibrate:$fltr 2>&1|cat > "$LOG_DIR/calibrate_$fltr.log"
 	   fi
        done
-       echo "Running $LAUNCH_SCRIPT $AGN calibrate_plot 2>&1|cat > $LOG_DIR/calibrate_$fltr.log"
+       echo "Running $LAUNCH_SCRIPT $AGN calibrate_plot 2>&1|cat > $LOG_DIR/calibrate_plot.log"
        if [ $DRYRUN -ne 1 ]
        then
 	   $LAUNCH_SCRIPT $AGN calibrate_plot 2>&1|cat > "$LOG_DIR/calibrate_plot.log"
@@ -86,12 +86,12 @@ if [ $ROAPLOT -eq 1 ]
        then
 	   $LAUNCH_SCRIPT $AGN roa_conv_plot 2>&1|cat > "$LOG_DIR/roa_conv_plot.log"
        fi
-       echo "Running $LAUNCH_SCRIPT $AGN roa_chains_plot:tau 2>&1|cat > $LOG_DIR/roa_chains_plot.log"
+       echo "Running $LAUNCH_SCRIPT $AGN roa_chains_plot:tau 2>&1|cat > $LOG_DIR/roa_chains_plot_tau.log"
        if [ $DRYRUN -ne 1 ]
        then
 	   $LAUNCH_SCRIPT $AGN roa_chains_plot:tau 2>&1|cat > "$LOG_DIR/roa_chains_plot_tau.log"
        fi
-       echo "Running $LAUNCH_SCRIPT $AGN roa_chains_plot:delta 2>&1|cat > $LOG_DIR/roa_chains_plot.log"
+       echo "Running $LAUNCH_SCRIPT $AGN roa_chains_plot:delta 2>&1|cat > $LOG_DIR/roa_chains_plot_delta.log"
        if [ $DRYRUN -ne 1 ]
        then
 	   $LAUNCH_SCRIPT $AGN roa_chains_plot:delta 2>&1|cat > "$LOG_DIR/roa_chains_plot_delta.log"

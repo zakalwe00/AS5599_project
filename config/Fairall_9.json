@@ -20,5 +20,9 @@
 		"mjd_range": [60065,60166]
 	    }
 	}
+    },
+    "calibration": {
+        "Nsamples": 25000,
+        "Nburnin": 20000
     }
 }
