@@ -1114,6 +1114,57 @@ def CalibrationPlot(model,overwrite=True):
 
     return
 
+
+def CalibrationSNR(model,select_period=None,overwrite=False):
+    print('Running PyROA CalibrationSNR')
+
+    # references for convenience
+    config = model.config()
+    calib_params = config.calibration_params()
+    roa_params = config.roa_params()
+
+    delay_ref = roa_params["delay_ref"]
+    sig_level = calib_params['sig_level']
+    exclude_fltrs = roa_params["exclude_fltrs"]    
+    fltrs = config.fltrs()
+
+    fltrs = [fltr for fltr in fltrs if fltr not in exclude_fltrs and fltr != delay_ref]    
+    fltrs = [delay_ref] + fltrs
+    
+    add_ext = '_{}'.format(roa_params['model'])
+    
+    data=[]
+
+    mjd_range = None
+    # We might chose to display SNR for a single obervation period
+    if select_period:
+        period_to_mjd_range = config.observation_params()['periods']
+        if select_period not in period_to_mjd_range:
+            raise Exception('Error: selected period {} not in observation periods for {}, check config'.format(select_period,config.agn_name()))
+        mjd_range = config.observation_params()['periods'][select_period]['mjd_range']
+        add_ext = add_ext + ' {}'.format(select_period)
+
+    snr = []
+    for fltr in fltrs:
+        calib_file = '{}/{}_{}.dat'.format(config.output_dir(),config.agn_name(),fltr)
+    
+        if Utils.check_file(calib_file,exit=True):
+            # get mjd flux err from the calibration file as a numpy array of first three columns
+            df = pd.read_csv(calib_file,
+                             header=None,index_col=None,
+                             quoting=csv.QUOTE_NONE,
+                             delim_whitespace=True).sort_values(0).loc[:,0:2]
+            if mjd_range:
+                df = df[np.logical_and(df[0] > mjd_range[0],
+                                       df[0] < mjd_range[1])]
+            
+            snr.append(Utils.signal_to_noise(df,sig_level,fltr))
+
+    ext = 'for AGN {} {}'.format(config.agn_name(),add_ext)
+    print('Signal to Noise ratio by filter {}'.format(ext))
+    print(tabulate([snr],headers=fltrs))
+
+
 def ConvergencePlot(model,select_period=None,overwrite=False):
 
     config = model.config()

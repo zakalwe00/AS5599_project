@@ -696,6 +696,29 @@ def log_probability(params, data, priors, add_var, size, sig_level, include_slow
 # Maths Operations                     #
 ########################################
 
+def signal_to_noise(df, sig_level, fltr):
+    # remove point with very large error
+    filter_large_sigma(df, sig_level, fltr, noprint=True)
+    flux = df.loc[:,1]
+    err = df.loc[:,2]
+    goodvals = df.loc[:,2] != 0.0
+    numgood = goodvals.sum()
+
+    m = df.loc[goodvals,1]
+    err = df.loc[goodvals,2]
+    
+    #Normalise lightcurve
+    m_mean = np.mean(m)
+    m_rms = np.std(m)
+    m = (m-m_mean)/m_rms
+    err = err/m_rms
+    
+    snr = np.mean(np.abs(m)/err)
+    
+    print('Calculated mean SNR={:.3f} for filter {} based on {} observations'.format(snr,fltr,numgood))
+    return snr
+    
+
 # Automated windowing procedure following Sokal (1989)
 def auto_window(taus, c):
     m = np.arange(len(taus)) < c * taus
@@ -744,11 +767,11 @@ def autocorr_func_1d(x, norm=True):
 
     return acf
 
-def filter_large_sigma(df, sig_level, fltr):
+def filter_large_sigma(df, sig_level, fltr, noprint=False):
     median_err = np.median(df.loc[:,2])
     goodvals = df.loc[:,2] < median_err * sig_level
     badvals = np.logical_not(goodvals)
-    if np.sum(badvals):
+    if np.sum(badvals) and noprint is False:
         print('Filtered band {} {} (sig_level={})'.format(fltr,df.loc[badvals,1].to_numpy(),sig_level))
     return df[goodvals]
     
