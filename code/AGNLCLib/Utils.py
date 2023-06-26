@@ -237,12 +237,13 @@ def _log_likelihood_calib(params, data, sig_level):
         interp = interpolate.interp1d(t, m_scaled, kind="linear", fill_value="extrapolate")
         model = interp(mjd)
         chi2 = np.empty(len(mjd))
-        ex_term = np.empty(len(mjd))  
+        ex_term = np.empty(len(mjd))
         for j in range(len(mjd)):
             if(abs(model[j]-flux[j]) < sig_level*err[j]):
                 chi2[j] = ((model[j]-flux[j])**2)/(err[j]**2)
                 ex_term[j] = np.log(2.0*np.pi*(err[j]**2))
             else:
+                # soft sigma clipping
                 chi2[j] =sig_level**2
                 ex_term[j] = np.log(2.0*np.pi*((abs(model[j] - flux[j])/sig_level)**2))
         lps[i]=np.sum(chi2 + ex_term) 
@@ -284,14 +285,17 @@ def _log_prior_calib(params, priors, s, init_params_chunks):
     for i in range(s):
         A = params_chunks[i][0]
         B = params_chunks[i][1]
+
+        # sig_prior is in multiples of the mean error of 
+        # observations from this scope (init_params_chunks[i][2]*5.0)
         sig = params_chunks[i][2]/(init_params_chunks[i][2]*5.0)
         
-        B_prior_width=0.5 # mJy
-        lnA_prior_width=0.02 # 0.02 = 2%
+        B_prior_width = 0.5 # mJy
+        lnA_prior_width = 0.02 # 0.02 = 2%
 
-        # back to original for Fairall testing HC 20230619
-#        A_prior.append(-2.0*np.log(lnA_prior_width*A*np.sqrt(2.0*np.pi)) - (np.log(A)/lnA_prior_width)**2.0)
-#        B_prior.append(2.0*np.log((1.0/np.sqrt(2.0*np.pi*(B_prior_width**2)))*np.exp(-0.5*(B/B_prior_width)**2)))
+        # changed to match 2023 paper HC 20230626
+        #A_prior.append(-2.0*np.log(lnA_prior_width*A*np.sqrt(2.0*np.pi)) - (np.log(A)/lnA_prior_width)**2.0)
+        #B_prior.append(2.0*np.log((1.0/np.sqrt(2.0*np.pi*(B_prior_width**2)))*np.exp(-0.5*(B/B_prior_width)**2)))
         A_prior.append(-2.0*np.log(lnA_prior_width*np.sqrt(2.0*np.pi)) - (np.log(A)/lnA_prior_width)**2.0)
         B_prior.append(-2.0*np.log(B_prior_width*np.sqrt(2.0*np.pi)) - (B/B_prior_width)**2)
         
@@ -638,6 +642,7 @@ def _BIC(params, data, add_var, size, sig_level,include_slow_comp, slow_comp_del
                 ex_term[j] = np.log(((err[j]**2)/(data[i][j,2]**2)))  
                               
             else:
+                # soft sigma clipping
                 chi2[j] =sig_level**2
                 ex_term[j] = np.log(((abs(model[j] - flux[j])/sig_level)**2)/(data[i][j,2]**2))
         lps[i]=np.sum(chi2 + ex_term) 
@@ -706,14 +711,14 @@ def signal_to_noise(df, sig_level, fltr):
 
     m = df.loc[goodvals,1]
     err = df.loc[goodvals,2]
+
+    #Calculate SNR as RMS of LC to the mean err of the flux
     
     #Normalise lightcurve
-    m_mean = np.mean(m)
-    m_rms = np.std(m)
-    m = (m-m_mean)/m_rms
-    err = err/m_rms
+    m_rms = np.sqrt(np.mean(m**2))
+    err_mean = np.mean(err)
     
-    snr = np.mean(np.abs(m)/err)
+    snr = np.mean(m_rms/err_mean)
     
     print('Calculated mean SNR={:.3f} for filter {} based on {} observations'.format(snr,fltr,numgood))
     return snr

@@ -5,7 +5,8 @@ import pandas as pd
 import csv
 from matplotlib import pyplot as plt
 import scipy
-from AGNLCLib import Utils
+# get the local copy of Utils
+from . import Utils
 import PYCCF
 from scipy import stats 
 

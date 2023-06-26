@@ -1,5 +1,6 @@
 import os,json
-from AGNLCLib import Utils
+# get the local copy of Utils
+from . import Utils
 from multiprocessing import Pool
 from itertools import chain
 from tabulate import tabulate
@@ -27,18 +28,25 @@ def InterCalibrateFilt(model,fltr,overwrite=False):
     config = model.config()
     calib_params = config.calibration_params()
 
-    # local variables
+    # set up scopes to be used for calibration
+    scopes = config.scopes()
+    exclude_scopes = calib_params.get("exclude_scopes",[])
+    scopes = [scope for scope in scopes if scope not in exclude_scopes]
+    print('Calibrating data for {} with {} excluded'.format(scopes,exclude_scopes))
+
+    # set up the local variables
+    data = []
     scopes_array = []
-    data=[]
         
-    for scope in config.scopes():
+    for scope in scopes:
         scope_file = '{}/{}_{}_{}.dat'.format(config.output_dir(),config.agn_name(),fltr,scope)
         #Check if file is empty
         if os.stat(scope_file).st_size == 0:
             print("")
         else:
-            data.append(np.loadtxt(scope_file))
-            scopes_array.append([scope]*np.loadtxt(scope_file).shape[0])
+            dd = np.loadtxt(scope_file)
+            data.append(dd)
+            scopes_array.append([scope]*dd.shape[0])
             
     scopes_array = [item for sublist in scopes_array for item in sublist]
 
@@ -91,7 +99,7 @@ def InterCalibrateFilt(model,fltr,overwrite=False):
     
     # 12 threads works if 12 virtual cores available
     # Reduce memory usage -> 6 threads 2023/06/14 as turgon has very little memory(?)
-    with Pool(4) as pool:
+    with Pool(calib_params['Nparallel']) as pool:
         sampler = emcee.EnsembleSampler(nwalkers, ndim, Utils.log_probability_calib, 
                                         args=(data, [calib_params['delta_prior'], calib_params['sigma_prior']],
                                               sig_level, init_params_chunks), pool=pool)
@@ -104,9 +112,9 @@ def InterCalibrateFilt(model,fltr,overwrite=False):
                 
     #####################################################################################
     # Repeat data shifting and ROA fit using best fit parameters
-    
+
     #Split samples into chunks
-    samples_chunks = [np.transpose(samples_flat)[i:i + 3] for i in range(0, len(np.transpose(samples_flat)), 3)] 
+    samples_chunks = [np.transpose(samples_flat)[i:i + 3] for i in range(0, len(np.transpose(samples_flat)), 3)]
     merged_mjd = []
     merged_flux = []
     merged_err = []
@@ -119,7 +127,7 @@ def InterCalibrateFilt(model,fltr,overwrite=False):
         mjd = data[i][:,0]
         flux = data[i][:,1]
         err = data[i][:,2]
-                    
+
         A = np.percentile(samples_chunks[i][0], [16, 50, 84])[1]
         A_values.append(A)
         B = np.percentile(samples_chunks[i][1], [16, 50, 84])[1]
@@ -131,23 +139,25 @@ def InterCalibrateFilt(model,fltr,overwrite=False):
         #Add extra variance
         err = np.sqrt((err**2) + (sig**2))
         err = err/A
-                    
+
         avgs.append(np.average(flux, weights = 1.0/(err**2)))
-        #Add shifted data to merged lightcurve        
+
+        #Add shifted data to merged lightcurve
         for j in range(len(mjd)):
             merged_mjd.append(mjd[j])
             merged_flux.append(flux[j])
             merged_err.append(err[j])
-                        
+
     merged_mjd = np.array(merged_mjd)
     merged_flux = np.array(merged_flux)
     merged_err = np.array(merged_err)
     A_values = np.array(A_values)
     B_values = np.array(B_values)
-       
+
     delta = np.percentile(samples_chunks[-1], [16, 50, 84])[1]
     params.append([delta])
     params = list(chain.from_iterable(params))#Flatten into single array
+
     #Calculate ROA to merged lc
     t, m, errs = Utils.RunningOptimalAverage(merged_mjd, merged_flux, merged_err, delta)
     
@@ -228,52 +238,125 @@ def InterCalibrateFilt(model,fltr,overwrite=False):
               header=False,sep=' ',float_format='%25.15e',index=False,
               quoting=csv.QUOTE_NONE,escapechar=' ')
 
+    # write out the calibration data as well
+    filehandler = open('{}/{}_calib_samples_flat.obj'.format(config.output_dir(),fltr),"wb")
+    pickle.dump(samples_flat,filehandler)
+    filehandler = open('{}/{}_calib_samples.obj'.format(config.output_dir(),fltr),"wb")
+    pickle.dump(samples,filehandler)
+    filehandler = open('{}/{}_calib_labels.obj'.format(config.output_dir(),fltr),"wb")
+    pickle.dump(labels,filehandler)
+    
+    return
+
+
+########################################
+# Diagnostic Graphs                    #
+########################################
+def InterCalibratePlot(model,fltr,overwrite=False):
+
+    print('Running PyROA InterCalibratePlot for filter {}'.format(fltr))
+
+    # references for convenience
+    config = model.config()
+    calib_params = config.calibration_params()
+
+    # set up scopes to be used for calibration
+    scopes = config.scopes()
+    exclude_scopes = calib_params.get("exclude_scopes",None)
+    scopes = [scope for scope in scopes if scope not in exclude_scopes]
+    print('Calibrating data for {} with {} excluded'.format(scopes,exclude_scopes))
+
+    # set up the local variables
+    data = []
+    scopes_array = []
+
+    # read original LCs by scope
+    for scope in scopes:
+        scope_file = '{}/{}_{}_{}.dat'.format(config.output_dir(),config.agn_name(),fltr,scope)
+        #Check if file is empty
+        if os.stat(scope_file).st_size == 0:
+            print("")
+        else:
+            data.append(np.loadtxt(scope_file))
+            scopes_array.append([scope]*np.loadtxt(scope_file).shape[0])
+            
+    scopes_array = [item for sublist in scopes_array for item in sublist]
+    
     # read calibration file which should now exist
     calib_file = '{}/{}_{}.dat'.format(config.output_dir(),config.agn_name(),fltr)
+    Utils.check_file(calib_file,exit=True)    
+    df = pd.read_csv(calib_file,
+                     header=None,index_col=None,
+                     quoting=csv.QUOTE_NONE,delim_whitespace=True).sort_values(0)
     
-    if os.path.exists(calib_file) == True:
-        df = pd.read_csv(calib_file,
-                         header=None,index_col=None,
-                         quoting=csv.QUOTE_NONE,delim_whitespace=True).sort_values(0)
-
-        output_file = '{}/{}_Calibration_Plot.pdf'.format(config.output_dir(),fltr)
-        if (os.path.exists(output_file) == False) or (overwrite == True):
-            
-            plt.rcParams.update({
-                "font.family": "Sans", 
-                "font.serif": ["DejaVu"],
-                "figure.figsize":[20,10],
-                "font.size": 14})
+    filehandler = open('{}/{}_calib_samples_flat.obj'.format(config.output_dir(),fltr),"rb")
+    samples_flat = pickle.load(filehandler)
         
-            #Plot calibrated ontop of original lcs
-            plt.title(str(fltr))
-            #Plot data for filter
-            for i in range(len(data)):
-                mjd = data[i][:,0]
-                flux = data[i][:,1]
-                err = data[i][:,2]
-                plt.errorbar(mjd, flux, yerr=err, ls='none', marker=".", label=str(scopes_array[i]), alpha=0.5)
+    filehandler = open('{}/{}_calib_samples.obj'.format(config.output_dir(),fltr),"rb")
+    samples = pickle.load(filehandler)
+
+    filehandler = open('{}/{}_calib_labels.obj'.format(config.output_dir(),fltr),"rb")
+    labels = pickle.load(filehandler)
+
+    filehandler = open('{}/{}_calib_Lightcurves_models.obj'.format(config.output_dir(),fltr),"rb")
+    models = pickle.load(filehandler)
+    
+    output_file = '{}/{}_Calibration_Plot.pdf'.format(config.output_dir(),fltr)
+    if (os.path.exists(output_file) == False) or (overwrite == True):
+        print('Not running PyROA InterCalibratePlot, file exists: {}'.format(output_file))
+        return
+
+    plt.rcParams.update({
+        "font.family": "Sans", 
+        "font.serif": ["DejaVu"],
+        "figure.figsize":[20,10],
+        "font.size": 14})
+        
+    #Plot calibrated ontop of original lcs
+    plt.title(str(fltr))
+    #Plot data for filter
+    for i in range(len(data)):
+        mjd = data[i][:,0]
+        flux = data[i][:,1]
+        err = data[i][:,2]
+        plt.errorbar(mjd, flux, yerr=err, ls='none', marker=".", label=str(scopes_array[i]), alpha=0.5)
                 
-            plt.errorbar(df[0], df[1], yerr=df[2], ls='none', marker=".", color="black", label="Calibrated")
+    plt.errorbar(df[0], df[1], yerr=df[2], ls='none', marker=".", color="black", label="Calibrated")
 
-            plt.xlabel("mjd")
-            plt.ylabel("Flux")
-            plt.legend()
-            print('Writing calibration plot {}'.format(output_file))
-            plt.savefig(output_file)
-            plt.close()
+    plt.xlabel("mjd")
+    plt.ylabel("Flux")
+    plt.legend()
+    print('Writing calibration plot {}'.format(output_file))
+    plt.savefig(output_file)
+#    plt.close()
+    plt.show()
+    
+    output_file = '{}/{}_Calibration_CornerPlot.pdf'.format(config.output_dir(),fltr)
 
-        output_file = '{}/{}_Calibration_CornerPlot.pdf'.format(config.output_dir(),fltr)
-            
-        if (os.path.exists(output_file) == False) or (overwrite == True):
-            plt.rcParams.update({'font.size': 7})
-            #Save Cornerplot to figure
-            fig = corner.corner(samples_flat, labels=labels, quantiles=[0.16, 0.5, 0.84], show_titles=True,
-                                title_kwargs={"fontsize": 8}, truths=params);
-            print('Writing calibration corner plot {}'.format(output_file))
-            plt.savefig(output_file)
-            plt.close();
-           
+    # Generate params list
+    samples_chunks = [np.transpose(samples_flat)[i:i + 3] for i in range(0, len(np.transpose(samples_flat)), 3)]
+    params = []
+
+    # A, B, sigma per scope
+    for i in range(len(data)):
+        A = np.percentile(samples_chunks[i][0], [16, 50, 84])[1]
+        B = np.percentile(samples_chunks[i][1], [16, 50, 84])[1]
+        sig = np.percentile(samples_chunks[i][2], [16, 50, 84])[1]
+        params.append([A, B, sig])
+
+    # Delta
+    params.append([np.percentile(samples_chunks[-1], [16, 50, 84])[1]])
+    params = list(chain.from_iterable(params))#Flatten into single array
+    
+    plt.rcParams.update({'font.size': 7})
+    #Save Cornerplot to figure
+    fig = corner.corner(samples_flat, labels=labels, quantiles=[0.16, 0.5, 0.84], show_titles=True,
+                        title_kwargs={"fontsize": 8}, truths=params);
+    print('Writing calibration corner plot {}'.format(output_file))
+    plt.savefig(output_file)
+#    plt.close();
+    plt.show()
+    
     return
 
 def Fit(model, overwrite=False, select_period=None):
@@ -294,7 +377,6 @@ def Fit(model, overwrite=False, select_period=None):
     sig_level = roa_params["sig_level"]
     use_backend = roa_params["use_backend"]
     resume_progress = roa_params["resume_progress"]
-    plot_corner = roa_params["plot_corner"]
     accretion_disk = roa_params["accretion_disk"]
     include_slow_comp = roa_params["include_slow_comp"]
     slow_comp_delta = roa_params["slow_comp_delta"]
@@ -571,7 +653,7 @@ def Fit(model, overwrite=False, select_period=None):
         ss[0] = np.prod(samples_flat.shape[:2])
         samples_flat = samples_flat.reshape(ss)
     else:    
-        with Pool(8) as pool:
+        with Pool(roa_params['Nparallel']) as pool:
 
             sampler = emcee.EnsembleSampler(nwalkers, ndim, Utils.log_probability, args=[data, priors, add_var, size,sig_level, include_slow_comp, slow_comp_delta, P_func, slow_comps, P_slow, init_delta, delay_dist, psi_types, accretion_disk, wavelengths, integral, integral2, init_params_chunks], pool=pool, backend=backend)
             sampler.run_mcmc(pos, Nsamples, progress=True);
@@ -876,7 +958,6 @@ def FitPlot(model,select_period,overwrite=False):
     add_var = roa_params["add_var"]
     sig_level = roa_params["sig_level"]
     delay_ref = roa_params["delay_ref"]
-    plot_corner = roa_params["plot_corner"]
     roa_model = roa_params["model"]
     mjd_range = None
 
@@ -1060,21 +1141,9 @@ def FitPlot(model,select_period,overwrite=False):
     plt.show()
 #    plt.close()
 
-# Large corner plot- somewhat nonsensical to produce
-#    if plot_corner:
-        #Plot Corner Plot
-#        plt.rcParams.update({'font.size': 14})
-        #Save Cornerplot to figure
-#        fig = corner.corner(samples_flat, labels=labels, quantiles=[0.16, 0.5, 0.84], show_titles=True, title_kwargs={"fontsize": 16});
-#        output_corner_plot = '{}/ROACornerPlot{}.pdf'.format(config.output_dir(),add_ext)
-#        print('Writing calibration corner plot {}'.format(output_corner_plot))
-#        plt.savefig(output_corner_plot)
-#        plt.show()
-#        plt.close()
-
     return
 
-    
+
 def CalibrationPlot(model,overwrite=True):
 
     config = model.config()
@@ -1187,11 +1256,6 @@ def ConvergencePlot(model,select_period=None,overwrite=False):
     if select_period:
         add_ext = add_ext = '_{}'.format(select_period)
 
-    output_file = '{}/ROA_Convergence{}.pdf'.format(config.output_dir(),add_ext)
-    if Utils.check_file(output_file) == True and overwrite==False:
-        print('Not running ROA ConvergencePlot, file exists: {}'.format(output_file))
-        return
-
     samples_file = '{}/samples_flat{}.obj'.format(config.output_dir(),add_ext)
     if Utils.check_file(samples_file) == False:
         input_ext = '_{}'.format(roa_params['model'])
@@ -1200,6 +1264,11 @@ def ConvergencePlot(model,select_period=None,overwrite=False):
     
     filehandler = open('{}/samples_flat{}.obj'.format(config.output_dir(),input_ext),"rb")
     samples = pickle.load(filehandler)
+
+    output_file = '{}/ROA_Convergence{}.pdf'.format(config.output_dir(),add_ext)
+    if Utils.check_file(output_file) == True and overwrite==False:
+        print('Not running ROA ConvergencePlot, file exists: {}'.format(output_file))
+        return
     
     init_chain_length=100
 
@@ -1259,11 +1328,6 @@ def ChainsPlot(model,select='tau',select_period=None,start_sample=0,overwrite=Fa
     if select_period:
         add_ext = add_ext +  '_{}'.format(select_period)
     
-    output_file = '{}/ROA_Chains{}_{}.pdf'.format(config.output_dir(),add_ext,select)
-    if Utils.check_file(output_file) == True and overwrite==False:
-        print('Not running ROA ChainsPlot, file exists: {}'.format(output_file))
-        return
-
     samples_file = '{}/samples{}.obj'.format(config.output_dir(),add_ext)
     if Utils.check_file(samples_file) == False:
         input_ext = '_{}'.format(roa_params['model'])
@@ -1280,6 +1344,11 @@ def ChainsPlot(model,select='tau',select_period=None,start_sample=0,overwrite=Fa
     samples_all_flat = samples_all_flat.reshape(ss)
 
     samples = samples_all_flat
+
+    output_file = '{}/ROA_Chains{}_{}.pdf'.format(config.output_dir(),add_ext,select)
+    if Utils.check_file(output_file) == True and overwrite==False:
+        print('Not running ROA ChainsPlot, file exists: {}'.format(output_file))
+        return
     
     # Plot each parameter
     labels = []

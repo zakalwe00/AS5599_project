@@ -4,7 +4,7 @@ from .Utils import RunningOptimalAverage,CalculateP,CalculatePorc,log_probabilit
 
 from .AGNLCModel import AGNLCModelConfig,AGNLCModel
 
-from .PyROA import InterCalibrateFilt,CalibrationSNR,Fit,CalibrationPlot,FitPlot,ConvergencePlot,ChainsPlot,CornerPlot
+from .PyROA import InterCalibrateFilt,InterCalibratePlot,CalibrationSNR,Fit,CalibrationPlot,FitPlot,ConvergencePlot,ChainsPlot,CornerPlot
 
 from .PyCCF import PyCCF
 

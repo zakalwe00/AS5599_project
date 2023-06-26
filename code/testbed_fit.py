@@ -16,7 +16,7 @@ AGN = 'NGC_6814'
 model = AGNLCLib.AGNLCModel(PROJECTDIR,CONFIGDIR,AGN)
 
 # We are running a test, divert output to the testbed
-model.config().set_output_dir('{}/{}/output'.format(PROJECTDIR,AGN))
+model.config().set_output_dir('{}/{}/output.old'.format(PROJECTDIR,AGN))
 
 # Artificially restrict the datapoints to consider
 #model.config().roa_params()['select_period']
