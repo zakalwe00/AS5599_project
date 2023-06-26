@@ -10,12 +10,13 @@
         ],
         "sigma_prior": [
             0.0,
-            2.0
+            5.0
         ],
         "init_delta": 1.0,
         "sig_level": 4.0,
-        "Nsamples": 15000,
-        "Nburnin": 10000
+        "Nsamples": 20000,
+        "Nburnin": 15000,
+	"Nparallel": 6
     },
     "CCF": {
 	"MC_Iterations": 10000,
@@ -41,7 +42,9 @@
 	"sig_level": 4.0,
 	"use_backend": false,
 	"resume_progress": false,
-	"plot_corner": false
+	"Nsamples": 15000,
+        "Nburnin": 10000,
+	"Nparallel": 6
     },
     "ROA_Model1": {
 	"delay_dist": false,
