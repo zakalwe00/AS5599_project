@@ -5,13 +5,15 @@ import pandas as pd
 import numpy as np
 import AGNLCLib
 import matplotlib
-matplotlib.use('Agg')
+#matplotlib.use('Agg')
+
 
 # setup global variables for use in the data pipeline (these can be overridden in environment)
-PROJECTDIR = os.environ.get('PROJECTDIR','/minthome/hcornfield/git/AS5599_project')
+HOMEDIR = os.environ['HOME']
+TESTEXT = os.environ.get('TESTEXT','')
 #json files for project configuration
-CONFIGDIR = os.environ.get('CONFIGDIR','/minthome/hcornfield/git/AS5599_project/config')
-
+PROJECTDIR = os.environ.get('PROJECTDIR','{}/git/AS5599_project'.format(HOMEDIR,TESTEXT))
+CONFIGDIR = os.environ.get('CONFIGDIR','{}/git/AS5599_project{}/config'.format(HOMEDIR,TESTEXT))
 
 # objects we have data for are all subdirs of the project dir, removing the code dir
 AGN_NAMES = [ agn.name for agn in os.scandir(PROJECTDIR) if agn.is_dir()

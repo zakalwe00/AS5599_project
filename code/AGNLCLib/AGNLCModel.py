@@ -1,5 +1,6 @@
 import os,json,datetime
-import AGNLCLib.Utils as Utils
+#import AGNLCLib.Utils as Utils
+from . import Utils
 
 
 # AGN lightcurve model config holds configuration data for the pipeline
@@ -46,8 +47,6 @@ class AGNLCModelConfig():
         self._agn_name = agn_name
         self._root_dir = '{}/{}'.format(PROJECTDIR,agn_name)
         self._output_dir = '{}/{}/output'.format(PROJECTDIR,agn_name)
-        
-
 
         # may want to override these arrays in the config
         self._fltrs      = []
@@ -65,11 +64,27 @@ class AGNLCModelConfig():
     def ccf_params(self): return self._ccf_params
     def roa_params(self): return self._roa_params
     def tmp_dir(self):
-        return '{}/output/tmp/{}'.format(self._root_dir,datetime.datetime.now().strftime('%Y%m%d_%H%M%S'))
+        tmp_dir = '{}/output/tmp/{}'.format(self._root_dir,datetime.datetime.now().strftime('%Y%m%d_%H%M%S'))
+        Utils.check_and_create_dir(tmp_dir)
+        self._dump_params(tmp_dir)
+        return tmp_dir
     def set_scopes(self, scopes): self._scopes = scopes
     def set_fltrs(self, fltrs): self._fltrs = fltrs
     def set_output_dir(self, output_dir): self._output_dir = output_dir
-    
+    def _dump_params(self,tmp_dir,noprint=True):
+        params = {'data': self._data_params,
+                  'observation': self._observation_params,
+                  'calibration': self._calibration_params,
+                  'CCF': self._ccf_params,
+                  'ROA': self._roa_params}
+        output_file = '{}/used_params.json'.format(tmp_dir)
+        if Utils.check_file(output_file) == True:
+            raise Exception('Unable to dump parameters for this run, file exists {}'.format(output_file))
+        with open(output_file,"w") as fd:
+            json_string = json.dumps(params,indent=4)
+            if noprint == False:
+                print(json_string)
+            fd.write(json_string)        
     
 # Model holds configuration parameters and runs lightcurve analysis functions
 class AGNLCModel():

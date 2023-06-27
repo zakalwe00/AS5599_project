@@ -44,7 +44,7 @@
 	"resume_progress": false,
 	"Nsamples": 15000,
         "Nburnin": 10000,
-	"Nparallel": 6
+	"Nparallel": 8
     },
     "ROA_Model1": {
 	"delay_dist": false,

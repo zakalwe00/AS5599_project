@@ -10,9 +10,15 @@ then
     echo "AGN not defined- please set as environment variable"
     exit
 fi
-LAUNCH_SCRIPT="$HOME/git/AS5599_project/code/launcher.py"
-ARGS_SCRIPT="$HOME/git/AS5599_project/code/get_args.py"
+SCRIPT=${BASH_SOURCE[0]}
+SCRIPTDIR=`dirname $SCRIPT`
+echo $SCRIPTDIR
+LAUNCH_SCRIPT="$SCRIPTDIR/launcher.py"
+ARGS_SCRIPT="$SCRIPTDIR/get_args.py"
+#This builds a temporary log dir and populates it with a backup of the config
 LOG_DIR=`$ARGS_SCRIPT $AGN tmp_dir`
+TESTEXT=${TESTEXT:-""}
+echo $TESTEXT
 DRYRUN=${DRYRUN:-0}
 CALIBRATE=${CALIBRATE:-0}
 CCF=${CCF:-0}
@@ -20,11 +26,7 @@ ROA=${ROA:-0}
 ROAPLOT=${ROAPLOT:-0}
 echo "Running signal analysis for $AGN"
 echo "--LOGDIR--"
-echo "Running mkdir -p $LOG_DIR"
-if [ $DRYRUN -ne 1 ]
-   then
-       mkdir -p $LOG_DIR
-fi
+echo "Writing parameters to $LOG_DIR/used_params.json"
 FLTRS=`$ARGS_SCRIPT $AGN fltrs`
 PERIODS=`$ARGS_SCRIPT $AGN periods`
 if [ $CALIBRATE -eq 1 ]

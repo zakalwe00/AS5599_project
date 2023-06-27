@@ -245,6 +245,7 @@ def InterCalibrateFilt(model,fltr,overwrite=False):
     pickle.dump(samples,filehandler)
     filehandler = open('{}/{}_calib_labels.obj'.format(config.output_dir(),fltr),"wb")
     pickle.dump(labels,filehandler)
+
     
     return
 
@@ -262,7 +263,7 @@ def InterCalibratePlot(model,fltr,overwrite=False):
 
     # set up scopes to be used for calibration
     scopes = config.scopes()
-    exclude_scopes = calib_params.get("exclude_scopes",None)
+    exclude_scopes = calib_params.get("exclude_scopes",[])
     scopes = [scope for scope in scopes if scope not in exclude_scopes]
     print('Calibrating data for {} with {} excluded'.format(scopes,exclude_scopes))
 
@@ -298,11 +299,11 @@ def InterCalibratePlot(model,fltr,overwrite=False):
     filehandler = open('{}/{}_calib_labels.obj'.format(config.output_dir(),fltr),"rb")
     labels = pickle.load(filehandler)
 
-    filehandler = open('{}/{}_calib_Lightcurves_models.obj'.format(config.output_dir(),fltr),"rb")
-    models = pickle.load(filehandler)
+#    filehandler = open('{}/{}_calib_Lightcurves_models.obj'.format(config.output_dir(),fltr),"rb")
+#    models = pickle.load(filehandler)
     
     output_file = '{}/{}_Calibration_Plot.pdf'.format(config.output_dir(),fltr)
-    if (os.path.exists(output_file) == False) or (overwrite == True):
+    if (os.path.exists(output_file) == True) and (overwrite == False):
         print('Not running PyROA InterCalibratePlot, file exists: {}'.format(output_file))
         return
 

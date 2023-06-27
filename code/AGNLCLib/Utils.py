@@ -825,9 +825,10 @@ def check_dir(cdir):
         raise Exception('Location {} is not a directory (as expected)'.format(cdir))
     return exists
                         
-def check_and_create_dir(cdir):
+def check_and_create_dir(cdir,noprint=True):
     if check_dir(cdir) == False:
-        print('Creating directory {}'.format(cdir))
+        if noprint == False:
+            print('Creating directory {}'.format(cdir))
         os.makedirs(cdir)
     return
 

@@ -6,9 +6,10 @@ from AGNLCLib import AGNLCModel
 
 # setup global variables for use in the data pipeline (these can be overridden in environment)
 HOMEDIR = os.environ['HOME']
+TESTEXT = os.environ.get('TESTEXT','')
 #json files for project configuration
-PROJECTDIR = os.environ.get('PROJECTDIR','{}/git/AS5599_project'.format(HOMEDIR))
-CONFIGDIR = os.environ.get('CONFIGDIR','{}/git/AS5599_project/config'.format(HOMEDIR))
+PROJECTDIR = os.environ.get('PROJECTDIR','{}/git/AS5599_project{}'.format(HOMEDIR,TESTEXT))
+CONFIGDIR = os.environ.get('CONFIGDIR','{}/git/AS5599_project{}/config'.format(HOMEDIR,TESTEXT))
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

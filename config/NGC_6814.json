@@ -9,8 +9,15 @@
 	    }
 	}
     },
+    "calibration": {
+        "sigma_prior": [
+            0.0,
+            10.0
+        ]
+    },
     "ROA": {
-	"reference_filter":"g",
+	"delay_ref":"B",
+	"select_period": "Aug2022-Dec2022",
 	"init_tau": {
 	    "g": 0.0,
 	    "B": -0.4,
@@ -19,6 +26,7 @@
 	    "r": 0.5,
 	    "u": -0.07,
 	    "z": 0.05
-	}
+	},
+	"exclude_fltrs":["g","V","r","u","z"]
     }
 }
