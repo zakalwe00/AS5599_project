@@ -13,8 +13,8 @@ fi
 SCRIPT=${BASH_SOURCE[0]}
 SCRIPTDIR=`dirname $SCRIPT`
 echo $SCRIPTDIR
-LAUNCH_SCRIPT="$SCRIPTDIR/launcher.py"
-ARGS_SCRIPT="$SCRIPTDIR/get_args.py"
+LAUNCH_SCRIPT="python $SCRIPTDIR/launcher.py"
+ARGS_SCRIPT="python $SCRIPTDIR/get_args.py"
 #This builds a temporary log dir and populates it with a backup of the config
 LOG_DIR=`$ARGS_SCRIPT $AGN tmp_dir`
 TESTEXT=${TESTEXT:-""}

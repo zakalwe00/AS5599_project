@@ -1,4 +1,3 @@
-#!/minthome/hcornfield/.local/bin/python
 import os,argparse
 from AGNLCLib import AGNLCModel
 

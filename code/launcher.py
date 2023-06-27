@@ -1,5 +1,3 @@
-#!/minthome/hcornfield/.local/bin/python
-
 import os,re,argparse
 import pandas as pd
 import numpy as np
