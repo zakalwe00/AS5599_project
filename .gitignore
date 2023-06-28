@@ -28,6 +28,7 @@ __pycache__/
 # CSV files
 *.csv
 !AVA_NGC_6814_lco.csv
+!AVA_Fairall_9_lco.csv
 
 # Distribution / packaging
 .Python
