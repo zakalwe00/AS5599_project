@@ -8,6 +8,7 @@ __pycache__/
 
 # C extensions
 *.so
+!xcorspc.cpython-38-x86_64-linux-gnu.so
 
 # Log files
 *.log
