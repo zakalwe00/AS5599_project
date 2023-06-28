@@ -10,13 +10,14 @@
 	}
     },
     "calibration": {
+	"calib_fltr_order": ["g","i","B"],
         "sigma_prior": [
             0.0,
             10.0
         ]
     },
     "ROA": {
-	"delay_ref":"B",
+	"delay_ref":"g",
 	"select_period": "Aug2022-Dec2022",
 	"init_tau": {
 	    "g": 0.0,
@@ -26,7 +27,6 @@
 	    "r": 0.5,
 	    "u": -0.07,
 	    "z": 0.05
-	},
-	"exclude_fltrs":["g","V","r","u","z"]
+	}
     }
 }

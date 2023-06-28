@@ -329,8 +329,10 @@ def InterCalibratePlot(model,fltr,overwrite=False):
     plt.legend()
     print('Writing calibration plot {}'.format(output_file))
     plt.savefig(output_file)
-#    plt.close()
-    plt.show()
+    if matplotlib.get_backend() == 'TkAgg':
+        plt.show()
+    else:
+        plt.close()
     
     output_file = '{}/{}_Calibration_CornerPlot.pdf'.format(config.output_dir(),fltr)
 
@@ -355,10 +357,10 @@ def InterCalibratePlot(model,fltr,overwrite=False):
                         title_kwargs={"fontsize": 8}, truths=params);
     print('Writing calibration corner plot {}'.format(output_file))
     plt.savefig(output_file)
-#    plt.close();
-    plt.show()
-    
-    return
+    if matplotlib.get_backend() == 'TkAgg':
+        plt.show()
+    else:
+        plt.close()
 
 def Fit(model, overwrite=False, select_period=None):
     config = model.config()
@@ -1139,10 +1141,10 @@ def FitPlot(model,select_period,overwrite=False):
     
     print('Writing {}'.format(output_file))
     plt.savefig(output_file)
-    plt.show()
-#    plt.close()
-
-    return
+    if matplotlib.get_backend() == 'TkAgg':
+        plt.show()
+    else:
+        plt.close()
 
 
 def CalibrationPlot(model,overwrite=True):
@@ -1294,10 +1296,10 @@ def ConvergencePlot(model,select_period=None,overwrite=False):
     plt.legend(fontsize=14)
 
     plt.savefig(output_file)
-    plt.show()
-#    plt.close()
-    
-    return
+    if matplotlib.get_backend() == 'TkAgg':
+        plt.show()
+    else:
+        plt.close()
 
 def ChainsPlot(model,select='tau',select_period=None,start_sample=0,overwrite=False):
     config = model.config()
@@ -1406,7 +1408,10 @@ def ChainsPlot(model,select='tau',select_period=None,start_sample=0,overwrite=Fa
         mm = 0
         for i in range(ndim):
             if i != 0:
-                ax = axes[ct]
+                if ndim == 2:
+                    ax = axes
+                else:
+                    ax = axes[ct]
                 ax.plot(samples[:, i*4+shifter+mm], "k", alpha=0.3)
                 ax.set_xlim(0, len(samples))
                 #ax.set_ylabel("Param "+str(start_sample+i))
@@ -1416,7 +1421,10 @@ def ChainsPlot(model,select='tau',select_period=None,start_sample=0,overwrite=Fa
                 ct+=1
             if i == 0:
                 mm = -1
-        axes[-1].set_xlabel("Chain number")
+        if ndim == 2:
+            axes.set_xlabel("Chain number")
+        else:
+            axes[-1].set_xlabel("Chain number")
     elif (select == 'delta'):
         fig, ax = plt.subplots(1, figsize=(10, 2))
         #samples = sampler.get_chain()
@@ -1433,9 +1441,10 @@ def ChainsPlot(model,select='tau',select_period=None,start_sample=0,overwrite=Fa
         return
 	
     plt.savefig(output_file)
-    plt.show()
-#    plt.close()
-    return
+    if matplotlib.get_backend() == 'TkAgg':
+        plt.show()
+    else:
+        plt.close()
 
 def CornerPlot(model,select='tau',select_period=None,overwrite=False):
     config = model.config()
@@ -1514,6 +1523,8 @@ def CornerPlot(model,select='tau',select_period=None,overwrite=False):
         return
 	
     plt.savefig(output_file)
-    plt.show()
-#    plt.close()
-    return
+    if matplotlib.get_backend() == 'TkAgg':
+        plt.show()
+    else:
+        plt.close()
+

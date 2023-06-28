@@ -293,11 +293,13 @@ def _log_prior_calib(params, priors, s, init_params_chunks):
         B_prior_width = 0.5 # mJy
         lnA_prior_width = 0.02 # 0.02 = 2%
 
-        # changed to match 2023 paper HC 20230626
-        #A_prior.append(-2.0*np.log(lnA_prior_width*A*np.sqrt(2.0*np.pi)) - (np.log(A)/lnA_prior_width)**2.0)
-        #B_prior.append(2.0*np.log((1.0/np.sqrt(2.0*np.pi*(B_prior_width**2)))*np.exp(-0.5*(B/B_prior_width)**2)))
-        A_prior.append(-2.0*np.log(lnA_prior_width*np.sqrt(2.0*np.pi)) - (np.log(A)/lnA_prior_width)**2.0)
-        B_prior.append(-2.0*np.log(B_prior_width*np.sqrt(2.0*np.pi)) - (B/B_prior_width)**2)
+        # keep this, the 2023 paper has an incorrect log normal prior for A
+        A_prior.append(-2.0*np.log(lnA_prior_width*A*np.sqrt(2.0*np.pi)) - (np.log(A)/lnA_prior_width)**2.0)
+        # This is per the 2023 paper
+        #A_prior.append(-2.0*np.log(lnA_prior_width*np.sqrt(2.0*np.pi)) - (np.log(A)/lnA_prior_width)**2.0)
+        B_prior.append(-2.0*np.log(B_prior_width*np.sqrt(2.0*np.pi)) - (B/B_prior_width)**2.0)
+
+
         
         if sig_prior[0] < sig < sig_prior[1]:
             check.append(0.0)

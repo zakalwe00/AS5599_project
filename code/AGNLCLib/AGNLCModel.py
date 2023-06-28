@@ -49,14 +49,16 @@ class AGNLCModelConfig():
         self._output_dir = '{}/{}/output'.format(PROJECTDIR,agn_name)
 
         # may want to override these arrays in the config
-        self._fltrs      = []
-        self._scopes     = []    
+        self._fltrs       = []
+        self._calib_fltrs = []
+        self._scopes      = []    
 
         
     def agn_name(self): return self._agn_name
     def root_dir(self): return self._root_dir
     def output_dir(self): return self._output_dir
     def fltrs(self): return self._fltrs
+    def calib_fltrs(self): return self._calib_fltrs
     def scopes(self): return self._scopes
     def data_params(self): return self._data_params
     def calibration_params(self): return self._calibration_params
@@ -69,7 +71,13 @@ class AGNLCModelConfig():
         self._dump_params(tmp_dir)
         return tmp_dir
     def set_scopes(self, scopes): self._scopes = scopes
-    def set_fltrs(self, fltrs): self._fltrs = fltrs
+    def set_fltrs(self, fltrs):
+        self._fltrs = fltrs
+        self.set_calib_fltrs(fltrs)
+    def set_calib_fltrs(self,fltrs):
+        calib_fltr_order =  self._calibration_params.get("calib_fltr_order",[])
+        self._calib_fltrs = [ff for ff in calib_fltr_order if ff in fltrs]
+        self._calib_fltrs = self._calib_fltrs + [ff for ff in fltrs if ff not in calib_fltr_order]
     def set_output_dir(self, output_dir): self._output_dir = output_dir
     def _dump_params(self,tmp_dir,noprint=True):
         params = {'data': self._data_params,
