@@ -253,7 +253,7 @@ def InterCalibrateFilt(model,fltr,overwrite=False):
 ########################################
 # Diagnostic Graphs                    #
 ########################################
-def InterCalibratePlot(model,fltr,overwrite=False):
+def InterCalibratePlot(model,fltr,select='A',overwrite=False):
 
     print('Running PyROA InterCalibratePlot for filter {}'.format(fltr))
 
@@ -302,11 +302,6 @@ def InterCalibratePlot(model,fltr,overwrite=False):
 #    filehandler = open('{}/{}_calib_Lightcurves_models.obj'.format(config.output_dir(),fltr),"rb")
 #    models = pickle.load(filehandler)
     
-    output_file = '{}/{}_Calibration_Plot.pdf'.format(config.output_dir(),fltr)
-    if (os.path.exists(output_file) == True) and (overwrite == False):
-        print('Not running PyROA InterCalibratePlot, file exists: {}'.format(output_file))
-        return
-
     plt.rcParams.update({
         "font.family": "Sans", 
         "font.serif": ["DejaVu"],
@@ -327,36 +322,70 @@ def InterCalibratePlot(model,fltr,overwrite=False):
     plt.xlabel("mjd")
     plt.ylabel("Flux")
     plt.legend()
-    print('Writing calibration plot {}'.format(output_file))
-    plt.savefig(output_file)
+    output_file = '{}/{}_Calibration_Plot.pdf'.format(config.output_dir(),fltr)
+    if (os.path.exists(output_file) == True) and (overwrite == False):
+        print('Not writing PyROA InterCalibratePlot, file exists: {}'.format(output_file))
+    else:
+        print('Writing calibration plot {}'.format(output_file))
+        plt.savefig(output_file)
     if matplotlib.get_backend() == 'TkAgg':
         plt.show()
     else:
         plt.close()
     
-    output_file = '{}/{}_Calibration_CornerPlot.pdf'.format(config.output_dir(),fltr)
+    output_file = '{}/{}_{}_Calibration_CornerPlot.pdf'.format(config.output_dir(),select,fltr)
 
     # Generate params list
     samples_chunks = [np.transpose(samples_flat)[i:i + 3] for i in range(0, len(np.transpose(samples_flat)), 3)]
     params = []
 
-    # A, B, sigma per scope
-    for i in range(len(data)):
-        A = np.percentile(samples_chunks[i][0], [16, 50, 84])[1]
-        B = np.percentile(samples_chunks[i][1], [16, 50, 84])[1]
-        sig = np.percentile(samples_chunks[i][2], [16, 50, 84])[1]
-        params.append([A, B, sig])
-
-    # Delta
-    params.append([np.percentile(samples_chunks[-1], [16, 50, 84])[1]])
-    params = list(chain.from_iterable(params))#Flatten into single array
-    
     plt.rcParams.update({'font.size': 7})
     #Save Cornerplot to figure
-    fig = corner.corner(samples_flat, labels=labels, quantiles=[0.16, 0.5, 0.84], show_titles=True,
-                        title_kwargs={"fontsize": 8}, truths=params);
-    print('Writing calibration corner plot {}'.format(output_file))
-    plt.savefig(output_file)
+
+    if (select == 'A') or (select == 'B') or (select == 'sig'):
+        if select == 'A': shifter = 0
+        if select == 'B': shifter = 1
+        if select == 'sig': shifter = 2
+        for i in range(len(data)):
+            var = np.percentile(samples_chunks[i][shifter], [16, 50, 84])[1]
+            params.append([var])
+
+        params = list(chain.from_iterable(params))#Flatten into single array
+
+        list_only = []
+        for i in range(len(data)):
+            list_only.append(i*3+shifter)
+
+        print(list_only)
+        print(np.array(labels)[list_only])
+        fig = corner.corner(samples_flat[:,list_only], labels=np.array(labels)[list_only],
+                            quantiles=[0.16, 0.5, 0.84], show_titles=True,
+                            title_kwargs={"fontsize": 16}, truths=params);
+    elif select == 'all':
+        # A, B, sigma per scope
+        for i in range(len(data)):
+            A = np.percentile(samples_chunks[i][0], [16, 50, 84])[1]
+            B = np.percentile(samples_chunks[i][1], [16, 50, 84])[1]
+            sig = np.percentile(samples_chunks[i][2], [16, 50, 84])[1]
+            params.append([A, B, sig])
+
+        # Delta
+        params.append([np.percentile(samples_chunks[-1], [16, 50, 84])[1]])
+        params = list(chain.from_iterable(params))#Flatten into single array
+
+        fig = corner.corner(samples_flat, labels=labels, quantiles=[0.16, 0.5, 0.84], show_titles=True,
+                            title_kwargs={"fontsize": 16}, truths=params);
+
+    else:
+        print('Invalid chains select input ({}), no action'.format(select))
+        return
+
+    if (os.path.exists(output_file) == True) and (overwrite == False):
+        print('Not writing PyROA InterCalibratePlot (Corner), file exists: {}'.format(output_file))
+    else:
+        print('Writing calibration plot {}'.format(output_file))
+        plt.savefig(output_file)
+
     if matplotlib.get_backend() == 'TkAgg':
         plt.show()
     else:
@@ -984,11 +1013,6 @@ def FitPlot(model,select_period,overwrite=False):
 
     add_ext = '_{}_{}'.format(roa_params['model'],select_period)
 
-    output_file = '{}/ROA_LCs{}.pdf'.format(config.output_dir(),add_ext)
-    if Utils.check_file(output_file) == True and overwrite==False:
-        print('Not running ROA FitPlot, file exists: {}'.format(output_file))
-        return
-    
     plt.rcParams.update({
         "font.family": "Sans",  
         "font.serif": ["DejaVu"],
@@ -1138,9 +1162,13 @@ def FitPlot(model,select_period,overwrite=False):
             fig.suptitle('{} Lightcurves {}'.format(config.agn_name(), title_ext))
 
     plt.subplots_adjust(wspace=0)
-    
-    print('Writing {}'.format(output_file))
-    plt.savefig(output_file)
+
+    output_file = '{}/ROA_LCs{}.pdf'.format(config.output_dir(),add_ext)
+    if Utils.check_file(output_file) == True and overwrite==False:
+        print('Not running ROA FitPlot, file exists: {}'.format(output_file))
+    else:
+        print('Writing {}'.format(output_file))
+        plt.savefig(output_file)
     if matplotlib.get_backend() == 'TkAgg':
         plt.show()
     else:
@@ -1268,11 +1296,6 @@ def ConvergencePlot(model,select_period=None,overwrite=False):
     filehandler = open('{}/samples_flat{}.obj'.format(config.output_dir(),input_ext),"rb")
     samples = pickle.load(filehandler)
 
-    output_file = '{}/ROA_Convergence{}.pdf'.format(config.output_dir(),add_ext)
-    if Utils.check_file(output_file) == True and overwrite==False:
-        print('Not running ROA ConvergencePlot, file exists: {}'.format(output_file))
-        return
-    
     init_chain_length=100
 
     # Compute the estimators for a few different chain lengths
@@ -1295,7 +1318,11 @@ def ConvergencePlot(model,select_period=None,overwrite=False):
     plt.ylabel(r"$\tau$ estimates")
     plt.legend(fontsize=14)
 
-    plt.savefig(output_file)
+    output_file = '{}/ROA_Convergence{}.pdf'.format(config.output_dir(),add_ext)
+    if Utils.check_file(output_file) == True and overwrite==False:
+        print('Not writing ROA ConvergencePlot, file exists: {}'.format(output_file))
+    else:
+        plt.savefig(output_file)
     if matplotlib.get_backend() == 'TkAgg':
         plt.show()
     else:
