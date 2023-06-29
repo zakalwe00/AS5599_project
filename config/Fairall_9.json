@@ -22,11 +22,6 @@
 	}
     },
     "calibration": {
-	"calib_fltr_order": ["g","i","B"],
-        "sigma_prior": [
-            0.0,
-            10.0
-        ],
-	"Nparallel": 6
+	"calib_fltr_order": ["g","i","B"]
     }
 }

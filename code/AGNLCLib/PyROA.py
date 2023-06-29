@@ -275,11 +275,8 @@ def InterCalibratePlot(model,fltr,select='A',overwrite=False):
     for scope in scopes:
         scope_file = '{}/{}_{}_{}.dat'.format(config.output_dir(),config.agn_name(),fltr,scope)
         #Check if file is empty
-        if os.stat(scope_file).st_size == 0:
-            print("")
-        else:
-            data.append(np.loadtxt(scope_file))
-            scopes_array.append([scope]*np.loadtxt(scope_file).shape[0])
+        data.append(np.loadtxt(scope_file))
+        scopes_array.append([scope]*np.loadtxt(scope_file).shape[0])
             
     scopes_array = [item for sublist in scopes_array for item in sublist]
     
@@ -315,7 +312,7 @@ def InterCalibratePlot(model,fltr,select='A',overwrite=False):
         mjd = data[i][:,0]
         flux = data[i][:,1]
         err = data[i][:,2]
-        plt.errorbar(mjd, flux, yerr=err, ls='none', marker=".", label=str(scopes_array[i]), alpha=0.5)
+        plt.errorbar(mjd, flux, yerr=err, ls='none', marker=".", label=str(scopes[i]), alpha=0.5)
                 
     plt.errorbar(df[0], df[1], yerr=df[2], ls='none', marker=".", color="black", label="Calibrated")
 

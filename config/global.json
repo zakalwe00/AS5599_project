@@ -17,7 +17,7 @@
         "sig_level": 4.0,
         "Nsamples": 25000,
         "Nburnin": 20000,
-	"Nparallel": 8
+	"Nparallel": 16
     },
     "CCF": {
 	"MC_Iterations": 10000,
