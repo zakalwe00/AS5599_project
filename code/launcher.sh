@@ -40,13 +40,13 @@ then
 	then
 	    $LAUNCH_SCRIPT $AGN calibrate:$fltr 2>&1|cat > "$LOG_DIR/calibrate_$fltr.log"
 	fi
-	echo "Running $LAUNCH_SCRIPT $AGN calibrate_filt_plot:$fltr 2>&1|cat > $LOG_DIR/calibrate_filt_plot_$fltr.log&"
+	echo "Running $LAUNCH_SCRIPT $AGN calibrate_filt_plot:$fltr 2>&1|cat > $LOG_DIR/calibrate_filt_plot_$fltr.log"
 	if [ $DRYRUN -ne 1 ]
 	then
-	    $LAUNCH_SCRIPT $AGN calibrate_filt_plot:$fltr 2>&1|cat > "$LOG_DIR/calibrate_filt_plot_$fltr.log&"
+	    $LAUNCH_SCRIPT $AGN calibrate_filt_plot:$fltr 2>&1|cat > "$LOG_DIR/calibrate_filt_plot_$fltr.log"
 	fi
     done
-    echo "Running $LAUNCH_SCRIPT $AGN calibrate_plot 2>&1|cat > $LOG_DIR/calibrate_plot.log&"
+    echo "Running $LAUNCH_SCRIPT $AGN calibrate_plot 2>&1|cat > $LOG_DIR/calibrate_plot.log"
     if [ $DRYRUN -ne 1 ]
     then
 	$LAUNCH_SCRIPT $AGN calibrate_plot 2>&1|cat > "$LOG_DIR/calibrate_plot.log"
@@ -107,6 +107,6 @@ then
     echo "Running $LAUNCH_SCRIPT $AGN roa_corner_plot 2>&1|cat > $LOG_DIR/roa_corner_plot.log"
     if [ $DRYRUN -ne 1 ]
     then
-	$LAUNCH_SCRIPT $AGN roa_corner_plot 2>&1|cat > "$LOG_DIR/roa_corner_plot.log&"
+	$LAUNCH_SCRIPT $AGN roa_corner_plot 2>&1|cat > "$LOG_DIR/roa_corner_plot.log"
     fi
 fi

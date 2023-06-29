@@ -27,9 +27,9 @@ FUNCTION_MAPPING = {
     'roa_plot': AGNLCLib.FitPlot,
     'roa_conv_plot': AGNLCLib.ConvergencePlot,
     'roa_chains_plot': AGNLCLib.ChainsPlot,
-    'roa_corner_plot': AGNLCLib.CornerPlot,
+    'roa_corner_plot': AGNLCLib.CornerPlot }
     # Uses PYCCF code adapted from https://bitbucket.org/cgrier/python_ccf_code/src/master/
-    'ccf': AGNLCLib.PyCCF }
+#    'ccf': AGNLCLib.PyCCF }
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

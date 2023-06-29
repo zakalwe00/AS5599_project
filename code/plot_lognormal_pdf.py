@@ -1,6 +1,7 @@
 import os,re,argparse
 import numpy as np
 import matplotlib
+matplotlib.use('GTK3Agg')
 import matplotlib.pyplot as plt
 from pathlib import Path
 #matplotlib.use('Agg')

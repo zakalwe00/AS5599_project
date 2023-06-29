@@ -14,7 +14,8 @@
         "sigma_prior": [
             0.0,
             10.0
-        ]
+        ],
+	"Nparallel": 16
     },
     "ROA": {
 	"delay_ref":"g",

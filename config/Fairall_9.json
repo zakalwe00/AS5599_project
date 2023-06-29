@@ -22,7 +22,11 @@
 	}
     },
     "calibration": {
-        "Nsamples": 25000,
-        "Nburnin": 20000
+	"calib_fltr_order": ["g","i","B"],
+        "sigma_prior": [
+            0.0,
+            10.0
+        ],
+	"Nparallel": 6
     }
 }
