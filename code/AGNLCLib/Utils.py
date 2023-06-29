@@ -852,10 +852,9 @@ def write_scope_filter_data(config,obs_file):
                 try:
                     obs_scope_fltr  = obs_scope[obs_scope['Filter'] == fltr].loc[:,['MJD','Flux','Error']]
                 except KeyError:
-                    print('Filter {} not found for telescope {}'.format(fltr, scope))
                     continue
                 obs_scope_fltr.to_csv(output_fn, sep=' ', index=False, header=False)
-
+    
     config.set_fltrs(fltrs)
     config.set_scopes(scopes)
 

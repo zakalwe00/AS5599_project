@@ -253,6 +253,73 @@ def InterCalibrateFilt(model,fltr,overwrite=False):
 ########################################
 # Diagnostic Graphs                    #
 ########################################
+def ScopeRawPlot(model,fltr,select_period,overwrite=False):
+
+    print('Running PyROA ScopeRawPlot for filter {}'.format(fltr))
+
+    config = model.config()
+
+    # set up scopes to be used for calibration
+    scopes = config.scopes()
+    exclude_scopes = config.calibration_params().get("exclude_scopes",[])
+
+    print('{} filter band data available from {} with {} to be excluded'.format(fltr,scopes,exclude_scopes))
+
+    period_to_mjd_range = config.observation_params()['periods']
+    if select_period not in period_to_mjd_range:
+        raise Exception('Error: selected period {} not in observation periods for {}, check config'.format(select_period,config.agn_name()))
+    mjd_range = config.observation_params()['periods'][select_period]['mjd_range']
+
+    # set up the local variables
+    data = []
+    scopes_array = []
+    
+    # read original LCs by scope
+    for scope in scopes:
+        scope_file = '{}/{}_{}_{}.dat'.format(config.output_dir(),config.agn_name(),fltr,scope)
+        #Check if file is empty
+        dd = np.loadtxt(scope_file)
+        dd = dd[np.logical_and(dd[:,0] >= mjd_range[0],dd[:,0] <= mjd_range[1]),:]
+        data.append(dd)
+        print('{} mean flux={:7.5f} std dev={:7.5f}, mean err={:7.5f}'.format(scope,np.mean(dd[:,1]),
+                                                                              np.std(dd[:,1]),
+                                                                              np.mean(dd[:,2])))            
+    
+    plt.rcParams.update({
+        "font.family": "Sans", 
+        "font.serif": ["DejaVu"],
+        "figure.figsize":[20,10],
+        "font.size": 14})
+        
+    #Plot calibrated ontop of original lcs
+    plt.title('{} filter band raw scope data for {}'.format(fltr,select_period))
+    #Plot data for filter
+    for i in range(len(data)):
+        mjd = data[i][:,0]
+        flux = data[i][:,1]
+        err = data[i][:,2]
+        if scopes[i] in exclude_scopes:
+            color="red"
+        else:
+            color="blue"
+        plt.errorbar(mjd, flux, yerr=err, ls='none', marker=".", label=str(scopes[i]), color=color, alpha=0.5)
+
+    plt.xlabel("mjd")
+    plt.ylabel("Flux")
+    plt.legend()
+    output_file = '{}/{}_{}_ScopeRaw_Plot.pdf'.format(config.output_dir(),fltr,select_period)
+    if (os.path.exists(output_file) == True) and (overwrite == False):
+        print('Not writing PyROA ScopeRaw, file exists: {}'.format(output_file))
+    else:
+        print('Writing raw scope data plot {}'.format(output_file))
+        plt.savefig(output_file)
+    if matplotlib.get_backend() == 'TkAgg':
+        plt.show()
+    else:
+        plt.close()
+    
+
+
 def InterCalibratePlot(model,fltr,select='A',overwrite=False):
 
     print('Running PyROA InterCalibratePlot for filter {}'.format(fltr))
@@ -1178,7 +1245,6 @@ def CalibrationPlot(model,overwrite=True):
     fltrs = config.fltrs()
     
     # All the calibrated lightcurves pre-fitting on the same plot
-    
     calib_curve_plot = '{}/Calibrated_LCs.pdf'.format(config.output_dir())
     if Utils.check_file(calib_curve_plot) == True and overwrite==False:
         print('Not running CalibrationPlot, file exists: {}'.format(calib_curve_plot))
