@@ -97,7 +97,7 @@ class AGNLCModelConfig():
 # Model holds configuration parameters and runs lightcurve analysis functions
 class AGNLCModel():
     
-    def __init__(self, PROJECTDIR, CONFIGDIR, agn_name):
+    def __init__(self, PROJECTDIR, CONFIGDIR, agn_name, noprint=True):
         self._config = AGNLCModelConfig(PROJECTDIR, CONFIGDIR, agn_name)
         
         Utils.check_and_create_dir(self.config().output_dir())
@@ -110,7 +110,7 @@ class AGNLCModel():
         #print('Found LCO lightcurve file {}'.format(lco_lc_file))
 
         # Load data (perform basic sanity check, record available filters and scopes)
-        Utils.write_scope_filter_data(self.config(),lco_lc_file)
+        Utils.write_scope_filter_data(self.config(),lco_lc_file,noprint=noprint)
 
     def config(self): return self._config
 

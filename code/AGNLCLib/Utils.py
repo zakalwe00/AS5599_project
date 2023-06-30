@@ -834,7 +834,7 @@ def check_and_create_dir(cdir,noprint=True):
         os.makedirs(cdir)
     return
 
-def write_scope_filter_data(config,obs_file):
+def write_scope_filter_data(config,obs_file,noprint=True):
     # split LCO file data for this AGN into records by telescope/filter (spectral band)
     obs = pd.read_csv(obs_file).sort_values('MJD')
     scopes = np.unique(obs.Tel)
@@ -842,18 +842,54 @@ def write_scope_filter_data(config,obs_file):
     fltrs = np.unique(obs.Filter)
     #print('Found filter list {}'.format(','.join(fltrs)))
 
+    params = config.data_params()
+    MAX_FLUX = params.get('MAX_FLUX',None)
+    MAX_FLUX_ERR = params.get('MAX_FLUX_ERR',None)
+    MAX_SIGMA = params.get('MAX_SIGMA',None)
+    periods_to_mjd = config.observation_params()['periods']
+    
     # prepare data file per telescope/filter if not already done
-    for scope in scopes:
-        for fltr in fltrs:
+    for fltr in fltrs:
+        obs_fltr = obs[obs['Filter'] == fltr]
+        obs_fltr = obs_fltr.loc[:,['MJD','Flux','Error','Tel']]
+        if MAX_FLUX is not None:
+            bad_values_flux = np.logical_or(obs_fltr['Flux'] > MAX_FLUX,
+                                            obs_fltr['Flux'] <= 0.0)
+            if np.sum(bad_values_flux):
+                if noprint is False:
+                    print('Throw out bad observations for filter {}:\n{}'.format(fltr,obs_fltr[bad_values_flux]))
+                obs_fltr = obs_fltr[bad_values_flux==False]
+
+        if MAX_FLUX_ERR is not None:
+            bad_values_err = np.logical_or(obs_fltr['Error'] > MAX_FLUX_ERR,
+                                           obs_fltr['Error'] <= 0.0)
+            if np.sum(bad_values_err):
+                if noprint is False:
+                    print('Throw out bad error estimates for filter {}:\n{}'.format(fltr,obs_fltr[bad_values_err]))
+                obs_fltr = obs_fltr[bad_values_err==False]
+
+        if MAX_SIGMA is not None:
+            for period in periods_to_mjd.keys():
+                mjd_range = periods_to_mjd[period]['mjd_range']
+                flux = obs_fltr['Flux'].to_numpy()
+                mjd = obs_fltr['MJD'].to_numpy()
+                mask = np.logical_and(mjd >= mjd_range[0],mjd <= mjd_range[1])
+                flux_mean_diff = flux - np.mean(flux[mask])
+                flux_std_limit = np.std(flux[mask])*MAX_SIGMA
+                
+                bad_values_outlier = np.logical_and(mask,np.logical_or(flux_mean_diff > flux_std_limit,flux_mean_diff < -MAX_SIGMA))
+                if np.sum(bad_values_outlier):
+                    if noprint is False:
+                        print('Throw out bad values ({}-sigma fluxes) for filter {} period {}:\n{}'.format(MAX_SIGMA,fltr,period,
+                                                                                                           obs_fltr[bad_values_outlier]))
+                    obs_fltr = obs_fltr[bad_values_outlier==False]
+
+        for scope in scopes:
             output_fn = '{}/{}_{}_{}.dat'.format(config.output_dir(), config.agn_name(), fltr, scope)
             if os.path.exists(output_fn) == False:
                 # Select time/flux/error per scope and filter
-                obs_scope = obs[obs['Tel'] == scope]
-                try:
-                    obs_scope_fltr  = obs_scope[obs_scope['Filter'] == fltr].loc[:,['MJD','Flux','Error']]
-                except KeyError:
-                    continue
-                obs_scope_fltr.to_csv(output_fn, sep=' ', index=False, header=False)
+                obs_scope = obs_fltr[obs_fltr['Tel'] == scope].loc[:,['MJD','Flux','Error']]
+                obs_scope.to_csv(output_fn, sep=' ', index=False, header=False)
     
     config.set_fltrs(fltrs)
     config.set_scopes(scopes)

@@ -1,7 +1,8 @@
 {
     "data": {
         "MAX_FLUX": 10000.0,
-        "MAX_FLUX_ERR": 100.0
+        "MAX_FLUX_ERR": 100.0,
+	"MAX_SIGMA": 3.5
     },
     "calibration": {
         "delta_prior": [
@@ -14,7 +15,7 @@
         ],
         "init_delta": 1.0,
 	"exclude_fltrs": [],
-        "sig_level": 4.0,
+        "sig_level": 3.0,
         "Nsamples": 25000,
         "Nburnin": 20000,
 	"Nparallel": 16

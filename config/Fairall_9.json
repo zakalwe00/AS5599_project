@@ -22,6 +22,8 @@
 	}
     },
     "calibration": {
-	"calib_fltr_order": ["g","i","B"]
+	"calib_fltr_order": ["g","i","B"],
+	"exclude_scopes": ["1m009"],
+	"Nparallel": 8
     }
 }
