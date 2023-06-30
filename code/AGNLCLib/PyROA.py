@@ -372,25 +372,28 @@ def InterCalibratePlot(model,fltr,select='A',corner_plot=True,overwrite=False):
         "figure.figsize":[20,10],
         "font.size": 14})
     period_to_mjd_range = config.observation_params()['periods']
-    fig, axs = plt.subplots(len(period_to_mjd_range.keys()))
+    fig, axs = plt.subplots(2*len(period_to_mjd_range.keys()))
     fig.suptitle('{} Calibrated scope light curves for {}'.format(config.agn_name(),fltr))
 
     for i,period in enumerate(period_to_mjd_range):
+        axs_idx = i*2
         mjd_range = period_to_mjd_range[period]['mjd_range']
         for j in range(len(data)):
             mask = np.logical_and(data[j][:,0] >= mjd_range[0],data[j][:,0] <= mjd_range[1])
             mjd = data[j][mask,0]
             flux = data[j][mask,1]
             err = data[j][mask,2]
-            axs[i].errorbar(mjd, flux, yerr=err, ls='none', marker=".", label=str(scopes[j]), alpha=0.5)
-            axs[i].set_ylabel('{} flux'.format(period))
+            axs[axs_idx].errorbar(mjd, flux, yerr=err, ls='none', marker=".", label=str(scopes[j]))
+            axs[axs_idx].set_ylabel('{}'.format(period))
         mask = np.logical_and(df[0] >= mjd_range[0],df[0] <= mjd_range[1])
         mjd_calib = df[0][mask].to_numpy()
         flux_calib = df[1][mask].to_numpy()
         err_calib = df[2][mask].to_numpy()
-        axs[i].plot(mjd_calib, flux_calib, color="black", label="Calibrated")
-        axs[i].fill_between(mjd_calib, flux_calib+err_calib, flux_calib-err_calib, alpha=0.5, color="black")
-        axs[i].legend()
+        axs[axs_idx].plot(mjd_calib, flux_calib, color="black", label="Calibrated", alpha=0.5)
+        axs[axs_idx].fill_between(mjd_calib, flux_calib+err_calib, flux_calib-err_calib, alpha=0.5, color="black")
+        axs[axs_idx].legend()
+        axs[axs_idx+1].errorbar(mjd_calib, flux_calib, yerr=err_calib, ls='none', marker=".", color="black", label="Calibrated")
+        axs[axs_idx+1].legend()
     axs[-1].set_xlabel('Time (days, MJD)')
 
     output_file = '{}/{}_Calibration_Plot.pdf'.format(config.output_dir(),fltr)

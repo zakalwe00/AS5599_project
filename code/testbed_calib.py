@@ -20,7 +20,7 @@ model = AGNLCLib.AGNLCModel(PROJECTDIR,CONFIGDIR,AGN)
 #model.config().set_output_dir('{}/{}/output.test'.format(PROJECTDIR,AGN))
 
 #for fltr in model.config().calib_fltrs():
-for fltr in ["g"]:
+for fltr in ["g","i"]:
     AGNLCLib.InterCalibratePlot(model,fltr,corner_plot=False,overwrite=True)
 #    for period in model.config().observation_params()['periods']:
 #        AGNLCLib.ScopeRawPlot(model,fltr,period,overwrite=True)
