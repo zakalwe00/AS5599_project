@@ -11,7 +11,7 @@
     },
     "calibration": {
 	"calib_fltr_order": ["g","i","B"],
-	"Nparallel": 8
+	"Nparallel": 24
     },
     "ROA": {
 	"delay_ref":"g",

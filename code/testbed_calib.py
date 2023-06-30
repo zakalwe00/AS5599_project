@@ -3,12 +3,12 @@ import pandas as pd
 import numpy as np
 import AGNLCLib
 import matplotlib
-#matplotlib.use('Agg')
-
+matplotlib.use('Agg')
+HOMEDIR = os.environ['HOME']
 # setup global variables for use in the data pipeline (these can be overridden in environment)
-PROJECTDIR = os.environ.get('PROJECTDIR','/minthome/hcornfield/git/AS5599_project')
+PROJECTDIR = os.environ.get('PROJECTDIR','{}/git/AS5599_project'.format(HOMEDIR))
 #json files for project configuration
-CONFIGDIR = os.environ.get('CONFIGDIR','/minthome/hcornfield/git/AS5599_project/config')
+CONFIGDIR = os.environ.get('CONFIGDIR','{}/git/AS5599_project/config'.format(HOMEDIR))
 
 AGN = 'NGC_6814'
 
