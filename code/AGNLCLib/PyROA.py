@@ -281,9 +281,10 @@ def ScopeRawPlot(model,fltr,select_period,overwrite=False):
         dd = np.loadtxt(scope_file)
         dd = dd[np.logical_and(dd[:,0] >= mjd_range[0],dd[:,0] <= mjd_range[1]),:]
         data.append(dd)
-        print('{} mean flux={:7.5f} std dev={:7.5f}, mean err={:7.5f}'.format(scope,np.mean(dd[:,1]),
-                                                                              np.std(dd[:,1]),
-                                                                              np.mean(dd[:,2])))            
+        if dd.shape[0] != 0:
+            print('{} mean flux={:7.5f} std dev={:7.5f}, mean err={:7.5f}'.format(scope,np.mean(dd[:,1]),
+                                                                                  np.std(dd[:,1]),
+                                                                                  np.mean(dd[:,2])))            
     
     plt.rcParams.update({
         "font.family": "Sans", 

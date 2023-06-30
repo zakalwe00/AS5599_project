@@ -1,4 +1,4 @@
-import os,json,datetime
+import os,json,datetime,socket
 #import AGNLCLib.Utils as Utils
 from . import Utils
 
@@ -14,6 +14,7 @@ class AGNLCModelConfig():
         global_config_file = '{}/global.json'.format(CONFIGDIR)
         if Utils.check_file(global_config_file) == False:
             raise Exception('Unable to configure AGN lightcurve model, {} does not exist'.format(global_config_file))
+        is_turgon = socket.gethostname() == 'turgon'
 
         # Take parameters from global config file and override with AGN object-specific settings
         with open(global_config_file, 'r') as fd:
@@ -23,7 +24,7 @@ class AGNLCModelConfig():
         self._calibration_params = params.get('calibration',{})
         self._ccf_params = params.get('CCF',{})
         self._roa_params = params.get('ROA',{})
-        
+
         #override with any object-specific parameters
         object_config_file = '{}/{}.json'.format(CONFIGDIR,agn_name)
         if Utils.check_file(object_config_file):
@@ -44,6 +45,13 @@ class AGNLCModelConfig():
         self._roa_params.update(params.get('ROA_{}'.format(roa_model_name)))
         if 'ROA_{}'.format(roa_model_name) in object_params:
             self._roa_params.update(object_params['ROA_{}'.format(roa_model_name)])
+
+        # don't allow turgon to run too many cpus (AWS can to 16, turgon typically 8)
+        if is_turgon and self._calibration_params['Nparallel'] > 10:
+            self._calibration_params['Nparallel'] = int(float(self._calibration_params['Nparallel'])/2.0)
+        if is_turgon and self._roa_params['Nparallel'] > 10:
+            self._roa_params['Nparallel'] = int(float(self._roa_params['Nparallel'])/2.0)        
+
         self._agn_name = agn_name
         self._root_dir = '{}/{}'.format(PROJECTDIR,agn_name)
         self._output_dir = '{}/{}/output'.format(PROJECTDIR,agn_name)

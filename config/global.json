@@ -43,9 +43,9 @@
 	"sig_level": 4.0,
 	"use_backend": false,
 	"resume_progress": false,
-	"Nsamples": 15000,
-        "Nburnin": 10000,
-	"Nparallel": 8
+	"Nsamples": 25000,
+        "Nburnin": 20000,
+	"Nparallel": 16
     },
     "ROA_Model1": {
 	"delay_dist": false,
