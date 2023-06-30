@@ -320,7 +320,7 @@ def ScopeRawPlot(model,fltr,select_period,overwrite=False):
     
 
 
-def InterCalibratePlot(model,fltr,select='A',overwrite=False):
+def InterCalibratePlot(model,fltr,select='A',corner_plot=True,overwrite=False):
 
     print('Running PyROA InterCalibratePlot for filter {}'.format(fltr))
 
@@ -371,21 +371,28 @@ def InterCalibratePlot(model,fltr,select='A',overwrite=False):
         "font.serif": ["DejaVu"],
         "figure.figsize":[20,10],
         "font.size": 14})
-        
-    #Plot calibrated ontop of original lcs
-    plt.title(str(fltr))
-    #Plot data for filter
-    for i in range(len(data)):
-        mjd = data[i][:,0]
-        flux = data[i][:,1]
-        err = data[i][:,2]
-        plt.errorbar(mjd, flux, yerr=err, ls='none', marker=".", label=str(scopes[i]), alpha=0.5)
-                
-    plt.errorbar(df[0], df[1], yerr=df[2], ls='none', marker=".", color="black", label="Calibrated")
+    period_to_mjd_range = config.observation_params()['periods']
+    fig, axs = plt.subplots(len(period_to_mjd_range.keys()))
+    fig.suptitle('{} Calibrated scope light curves for {}'.format(config.agn_name(),fltr))
 
-    plt.xlabel("mjd")
-    plt.ylabel("Flux")
-    plt.legend()
+    for i,period in enumerate(period_to_mjd_range):
+        mjd_range = period_to_mjd_range[period]['mjd_range']
+        for j in range(len(data)):
+            mask = np.logical_and(data[j][:,0] >= mjd_range[0],data[j][:,0] <= mjd_range[1])
+            mjd = data[j][mask,0]
+            flux = data[j][mask,1]
+            err = data[j][mask,2]
+            axs[i].errorbar(mjd, flux, yerr=err, ls='none', marker=".", label=str(scopes[j]), alpha=0.5)
+            axs[i].set_ylabel('{} flux'.format(period))
+        mask = np.logical_and(df[0] >= mjd_range[0],df[0] <= mjd_range[1])
+        mjd_calib = df[0][mask].to_numpy()
+        flux_calib = df[1][mask].to_numpy()
+        err_calib = df[2][mask].to_numpy()
+        axs[i].plot(mjd_calib, flux_calib, color="black", label="Calibrated")
+        axs[i].fill_between(mjd_calib, flux_calib+err_calib, flux_calib-err_calib, alpha=0.5, color="black")
+        axs[i].legend()
+    axs[-1].set_xlabel('Time (days, MJD)')
+
     output_file = '{}/{}_Calibration_Plot.pdf'.format(config.output_dir(),fltr)
     if (os.path.exists(output_file) == True) and (overwrite == False):
         print('Not writing PyROA InterCalibratePlot, file exists: {}'.format(output_file))
@@ -396,6 +403,9 @@ def InterCalibratePlot(model,fltr,select='A',overwrite=False):
         plt.show()
     else:
         plt.close()
+
+    if corner_plot is False:
+        return
     
     output_file = '{}/{}_{}_Calibration_CornerPlot.pdf'.format(config.output_dir(),select,fltr)
 
