@@ -1,8 +1,7 @@
 {
     "data": {
         "MAX_FLUX": 10000.0,
-        "MAX_FLUX_ERR": 100.0,
-	"MAX_SIGMA": 3.0
+        "MAX_FLUX_ERR": 100.0
     },
     "calibration": {
         "delta_prior": [
