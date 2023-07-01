@@ -22,8 +22,6 @@
     "CCF": {
 	"MC_Iterations": 10000,
 	"Centroid_Threshold": 0.8,
-	"sig_level": 3.0,
-	"flux_jump_sig_level": 3.0,
         "lag_range": [
             -15.0,
             15.0
