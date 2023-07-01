@@ -1,9 +1,10 @@
-import os,re,argparse
+import os,argparse,socket,sys
 import pandas as pd
 import numpy as np
 import AGNLCLib
 import matplotlib
-matplotlib.use('Agg')
+if sys.stdout.isatty() is False:
+    matplotlib.use('Agg')
 
 
 # setup global variables for use in the data pipeline (these can be overridden in environment)
@@ -28,8 +29,12 @@ FUNCTION_MAPPING = {
     'roa_conv_plot': AGNLCLib.ConvergencePlot,
     'roa_chains_plot': AGNLCLib.ChainsPlot,
     'roa_corner_plot': AGNLCLib.CornerPlot }
-    # Uses PYCCF code adapted from https://bitbucket.org/cgrier/python_ccf_code/src/master/
-#    'ccf': AGNLCLib.PyCCF }
+
+is_turgon = socket.gethostname() == 'turgon'
+# Uses PYCCF code adapted from https://bitbucket.org/cgrier/python_ccf_code/src/master/
+# installed on turgon but not AWS
+if is_turgon:
+    FUNCTION_MAPPING['ccf'] = AGNLCLib.PyCCF
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

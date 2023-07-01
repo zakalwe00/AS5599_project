@@ -6,7 +6,10 @@ from .AGNLCModel import AGNLCModelConfig,AGNLCModel
 
 from .PyROA import InterCalibrateFilt,InterCalibratePlot,CalibrationSNR,Fit,CalibrationPlot,FitPlot,ConvergencePlot,ChainsPlot,CornerPlot,ScopeRawPlot
 
-#from .PyCCF import PyCCF
+import socket
+is_turgon = socket.gethostname() == 'turgon'
+if is_turgon:
+    from .PyCCF import PyCCF
 
 
 

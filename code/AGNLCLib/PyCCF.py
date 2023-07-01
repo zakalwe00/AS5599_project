@@ -35,8 +35,6 @@ def PyCCF(model,fltr1,fltr2,overwrite=False):
     fltr2_all = pd.read_csv(calib_file2,header=None,index_col=None,
                             quoting=csv.QUOTE_NONE,delim_whitespace=True).sort_values(0)
 
-    flux_jump_sig_level = params.get('flux_jump_sig_level',None)
-    sig_level = params['sig_level']
     # Time lag range to consider in the CCF (days).
     # Must be small enough that there is some overlap between light curves at that shift
     # (i.e., if the light curves span 80 days, these values must be less than 80 days).
@@ -56,20 +54,12 @@ def PyCCF(model,fltr1,fltr2,overwrite=False):
         # from May to the following Feb
         mjd_range = params["periods"][period]["mjd_range"]
 
-        # filter data with sigma > sig_level * median_err for this date range
-        fltr1_period = fltr1_all[np.logical_and(fltr1_all[0] > mjd_range[0],
+        fltr1_period = fltr1_all[np.logical_and(fltr1_all[7] ==False,
+                                                fltr1_all[0] > mjd_range[0],
                                                 fltr1_all[0] < mjd_range[1])].loc[:,0:2]
-        fltr2_period = fltr2_all[np.logical_and(fltr2_all[0] > mjd_range[0],
-                                                fltr2_all[0] < mjd_range[1])].loc[:,0:2]
-
-        # filter datapoints with large error
-        fltr1_period = Utils.filter_large_sigma(fltr1_period,sig_level,fltr1)
-        fltr2_period = Utils.filter_large_sigma(fltr2_period,sig_level,fltr2)
-        
-        # filter datapoints with large flux jumps either side
-        if flux_jump_sig_level:
-            fltr1_period = Utils.filter_large_sigma_jumps(fltr1_period,flux_jump_sig_level,fltr1)
-            fltr2_period = Utils.filter_large_sigma_jumps(fltr2_period,flux_jump_sig_level,fltr2)
+        fltr2_period = fltr2_all[np.logical_and(fltr2_all[7] ==False,
+                                                np.logical_and(fltr2_all[0] > mjd_range[0],
+                                                               fltr2_all[0] < mjd_range[1]))].loc[:,0:2]
 
         mjd1,flux1,err1 = [col for col in fltr1_period.T.to_numpy()]
         mjd2,flux2,err2 = [col for col in fltr2_period.T.to_numpy()]

@@ -12,6 +12,7 @@ import emcee
 import pickle
 import matplotlib
 import matplotlib.pyplot as plt
+from matplotlib import gridspec
 matplotlib.rc('xtick', labelsize=12) 
 matplotlib.rc('ytick', labelsize=12) 
 import scipy.interpolate as interpolate
@@ -96,20 +97,32 @@ def InterCalibrateFilt(model,fltr,overwrite=False):
     print("NWalkers="+str(int(2.0*Npar)))
     nwalkers, ndim = pos.shape
     sig_level = calib_params['sig_level']
-    
-    # 12 threads works if 12 virtual cores available
-    # Reduce memory usage -> 6 threads 2023/06/14 as turgon has very little memory(?)
-    with Pool(calib_params['Nparallel']) as pool:
-        sampler = emcee.EnsembleSampler(nwalkers, ndim, Utils.log_probability_calib, 
-                                        args=(data, [calib_params['delta_prior'], calib_params['sigma_prior']],
-                                              sig_level, init_params_chunks), pool=pool)
-        sampler.run_mcmc(pos, calib_params['Nsamples'], progress=True);
 
-    #Extract samples with burn-in of 10000 (default setting, see global.json)
-    samples_flat = sampler.get_chain(discard=calib_params['Nburnin'], thin=15, flat=True)
-                
-    samples = sampler.get_chain()
-                
+    if Utils.check_file('{}/{}_calib_samples.obj'.format(config.output_dir(),fltr)) == False:
+    
+        # 12 threads works if 12 virtual cores available
+        # Reduce memory usage -> 6 threads 2023/06/14 as turgon has very little memory(?)
+        with Pool(calib_params['Nparallel']) as pool:
+            sampler = emcee.EnsembleSampler(nwalkers, ndim, Utils.log_probability_calib, 
+                                            args=(data, [calib_params['delta_prior'], calib_params['sigma_prior']],
+                                                  sig_level, init_params_chunks), pool=pool)
+            sampler.run_mcmc(pos, calib_params['Nsamples'], progress=True);
+
+        #Extract samples with burn-in of 10000 (default setting, see global.json)
+        samples_flat = sampler.get_chain(discard=calib_params['Nburnin'], thin=15, flat=True)
+        
+        samples = sampler.get_chain()
+
+    else:
+        filehandler = open('{}/{}_calib_samples_flat.obj'.format(config.output_dir(),fltr),"rb")
+        samples_flat = pickle.load(filehandler)
+        
+        filehandler = open('{}/{}_calib_samples.obj'.format(config.output_dir(),fltr),"rb")
+        samples = pickle.load(filehandler)
+
+    filehandler = open('{}/{}_calib_labels.obj'.format(config.output_dir(),fltr),"rb")
+    labels = pickle.load(filehandler)
+    
     #####################################################################################
     # Repeat data shifting and ROA fit using best fit parameters
 
@@ -163,7 +176,8 @@ def InterCalibrateFilt(model,fltr,overwrite=False):
     
     Calibrated_mjd = []
     Calibrated_flux = []
-    Calibrated_err = [] 
+    Calibrated_err = []
+    Calibration_clip = []
                 
     Porc=Utils.CalculatePorc(merged_mjd, merged_flux, merged_err, delta)
     
@@ -203,12 +217,15 @@ def InterCalibrateFilt(model,fltr,overwrite=False):
             Calibrated_flux.append(flux[j])
             if (abs(interpmodel[j] - flux[j]) > sig_level*err[j]):
                 Calibrated_err.append((abs(interpmodel[j] - flux[j])/sig_level))
+                Calibration_clip.append(True)
             else:
                 Calibrated_err.append(err[j])
+                Calibration_clip.append(False)
                 
     Calibrated_mjd = np.array(Calibrated_mjd)
     Calibrated_flux = np.array(Calibrated_flux)
     Calibrated_err = np.array(Calibrated_err)
+    Calibration_clip = np.array(Calibration_clip)
                 
     print("<A> = ", np.mean(A_values))
     print("<B> = ", np.mean(B_values))
@@ -232,19 +249,21 @@ def InterCalibrateFilt(model,fltr,overwrite=False):
         'str1':scopes_array,
         'f4':Porc,
         'f5':interpmodel_j1,
-        'f6':error_j1
+        'f6':error_j1,
+        'b1':Calibration_clip
     }).sort_values('f1')
     df.to_csv(output_file,
               header=False,sep=' ',float_format='%25.15e',index=False,
               quoting=csv.QUOTE_NONE,escapechar=' ')
 
-    # write out the calibration data as well
-    filehandler = open('{}/{}_calib_samples_flat.obj'.format(config.output_dir(),fltr),"wb")
-    pickle.dump(samples_flat,filehandler)
-    filehandler = open('{}/{}_calib_samples.obj'.format(config.output_dir(),fltr),"wb")
-    pickle.dump(samples,filehandler)
-    filehandler = open('{}/{}_calib_labels.obj'.format(config.output_dir(),fltr),"wb")
-    pickle.dump(labels,filehandler)
+    if Utils.check_file('{}/{}_calib_samples.obj'.format(config.output_dir(),fltr)) == False:
+        # write out the calibration data if not already available
+        filehandler = open('{}/{}_calib_samples_flat.obj'.format(config.output_dir(),fltr),"wb")
+        pickle.dump(samples_flat,filehandler)
+        filehandler = open('{}/{}_calib_samples.obj'.format(config.output_dir(),fltr),"wb")
+        pickle.dump(samples,filehandler)
+        filehandler = open('{}/{}_calib_labels.obj'.format(config.output_dir(),fltr),"wb")
+        pickle.dump(labels,filehandler)
 
     
     return
@@ -321,7 +340,7 @@ def ScopeRawPlot(model,fltr,select_period,overwrite=False):
     
 
 
-def InterCalibratePlot(model,fltr,select='A',corner_plot=True,overwrite=False):
+def InterCalibratePlot(model,fltr,select='A',corner_plot=False,overwrite=False):
 
     print('Running PyROA InterCalibratePlot for filter {}'.format(fltr))
 
@@ -333,7 +352,7 @@ def InterCalibratePlot(model,fltr,select='A',corner_plot=True,overwrite=False):
     scopes = config.scopes()
     exclude_scopes = calib_params.get("exclude_scopes",[])
     scopes = [scope for scope in scopes if scope not in exclude_scopes]
-    print('Calibrating data for {} with {} excluded'.format(scopes,exclude_scopes))
+    print('Plotting calibrated lightcurve for {} with {} excluded'.format(scopes,exclude_scopes))
 
     # set up the local variables
     data = []
@@ -363,9 +382,6 @@ def InterCalibratePlot(model,fltr,select='A',corner_plot=True,overwrite=False):
 
     filehandler = open('{}/{}_calib_labels.obj'.format(config.output_dir(),fltr),"rb")
     labels = pickle.load(filehandler)
-
-#    filehandler = open('{}/{}_calib_Lightcurves_models.obj'.format(config.output_dir(),fltr),"rb")
-#    models = pickle.load(filehandler)
     
     plt.rcParams.update({
         "font.family": "Sans", 
@@ -373,30 +389,53 @@ def InterCalibratePlot(model,fltr,select='A',corner_plot=True,overwrite=False):
         "figure.figsize":[20,10],
         "font.size": 14})
     period_to_mjd_range = config.observation_params()['periods']
-    fig, axs = plt.subplots(2*len(period_to_mjd_range.keys()))
-    fig.suptitle('{} Calibrated scope light curves for {}'.format(config.agn_name(),fltr))
+    #    fig, axs = plt.subplots(2*len(period_to_mjd_range.keys()))
+    fig = plt.figure()
+    height_ratios = []
+    for ii in period_to_mjd_range:
+        height_ratios = height_ratios + [2,1.5]
+    gs = gridspec.GridSpec(2*len(period_to_mjd_range.keys()), 1, height_ratios=height_ratios,hspace=0) 
 
     for i,period in enumerate(period_to_mjd_range):
         axs_idx = i*2
+        ax0 = plt.subplot(gs[axs_idx])
         mjd_range = period_to_mjd_range[period]['mjd_range']
         for j in range(len(data)):
             mask = np.logical_and(data[j][:,0] >= mjd_range[0],data[j][:,0] <= mjd_range[1])
             mjd = data[j][mask,0]
             flux = data[j][mask,1]
             err = data[j][mask,2]
-            axs[axs_idx].errorbar(mjd, flux, yerr=err, ls='none', marker=".", label=str(scopes[j]))
-            axs[axs_idx].set_ylabel('{}'.format(period))
+            ax0.errorbar(mjd, flux, yerr=err, ls='none', marker=".", label=str(scopes[j]))
+        # filter and remove clipped datapoints from the calibrated lightcurve
         mask = np.logical_and(df[0] >= mjd_range[0],df[0] <= mjd_range[1])
+        err_mask = np.logical_and(df[7] == False,mask)
         mjd_calib = df[0][mask].to_numpy()
         flux_calib = df[1][mask].to_numpy()
         err_calib = df[2][mask].to_numpy()
-        axs[axs_idx].plot(mjd_calib, flux_calib, color="black", label="Calibrated", alpha=0.5)
-        axs[axs_idx].fill_between(mjd_calib, flux_calib+err_calib, flux_calib-err_calib, alpha=0.5, color="black")
-        axs[axs_idx].legend()
-        axs[axs_idx+1].errorbar(mjd_calib, flux_calib, yerr=err_calib, ls='none', marker=".", color="black", label="Calibrated")
-        axs[axs_idx+1].legend()
-    axs[-1].set_xlabel('Time (days, MJD)')
-
+        mjd_calib_clipped = df[0][err_mask].to_numpy()
+        flux_calib_clipped = df[1][err_mask].to_numpy()
+        err_calib_clipped = df[2][err_mask].to_numpy()
+        ax0.plot(mjd_calib, flux_calib, color="black", label="Calibrated", alpha=0.5)
+        #ax0.fill_between(mjd_calib, flux_calib+err_calib, flux_calib-err_calib, alpha=0.5, color="black")
+        plt.setp(ax0.get_xticklabels(), visible=False)        
+        ax1 = plt.subplot(gs[axs_idx+1], sharex = ax0)
+        ax1.errorbar(mjd_calib_clipped, flux_calib_clipped, yerr=err_calib_clipped,
+                     ls='none', marker=".",
+                     color="black",
+                     label="Sigma\nclipped\nvalues\nremoved\n(level={})".format(calib_params['sig_level']))
+        ax1.set_ylabel('Flux (mJy) {}'.format(period))
+        ax1.yaxis.set_label_coords(-0.03,1.35)
+        # Shrink x=axis by 10% in order to fit the legend on the right
+        box = ax0.get_position()
+        ax0.set_position([box.x0, box.y0, box.width * 0.9, box.height])
+        box = ax1.get_position()
+        ax1.set_position([box.x0, box.y0+box.height*0.2, box.width * 0.9, box.height*0.8])
+        if axs_idx == 0:
+            ax0.set_title('{} Individual telescope and calibrated light curves for {}'.format(config.agn_name(),fltr))
+            # Put a legend containing telescope names to the right in the cleared space
+            ax0.legend(loc='center left', bbox_to_anchor=(1.0, 0.05))
+            ax1.legend(loc='center left', bbox_to_anchor=(1.0, -1.2))
+    ax1.set_xlabel('Time (days, MJD)')    
     output_file = '{}/{}_Calibration_Plot.pdf'.format(config.output_dir(),fltr)
     if (os.path.exists(output_file) == True) and (overwrite == False):
         print('Not writing PyROA InterCalibratePlot, file exists: {}'.format(output_file))
