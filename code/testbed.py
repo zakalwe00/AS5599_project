@@ -10,7 +10,7 @@ PROJECTDIR = os.environ.get('PROJECTDIR','/minthome/hcornfield/git/AS5599_projec
 #json files for project configuration
 CONFIGDIR = os.environ.get('CONFIGDIR','/minthome/hcornfield/git/AS5599_project/config')
 
-AGN = 'NGC_6814'
+AGN = 'NGC_1365'
 
 model = AGNLCLib.AGNLCModel(PROJECTDIR,CONFIGDIR,AGN)
 

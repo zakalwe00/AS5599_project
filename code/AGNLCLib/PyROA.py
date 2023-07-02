@@ -325,11 +325,12 @@ def ScopeRawPlot(model,fltr,select_period,overwrite=False):
         mjd = data[i][:,0]
         flux = data[i][:,1]
         err = data[i][:,2]
-        if scopes[i] in exclude_scopes:
-            color="red"
-        else:
-            color="blue"
-        plt.errorbar(mjd, flux, yerr=err, ls='none', marker=".", label=str(scopes[i]), color=color, alpha=0.5)
+#        if scopes[i] in exclude_scopes:
+#            color="red"
+#        else:
+#            color="blue"
+#        plt.errorbar(mjd, flux, yerr=err, ls='none', marker=".", label=str(scopes[i]), color=color, alpha=0.5)
+        plt.errorbar(mjd, flux, yerr=err, ls='none', marker=".", label=str(scopes[i]))
 
     plt.xlabel("mjd")
     plt.ylabel("Flux")
@@ -1124,9 +1125,6 @@ def FitPlot(model,select_period,overwrite=False):
     delay_ref = roa_params["delay_ref"]
     roa_model = roa_params["model"]
     mjd_range = None
-
-    ccf_flux_jump_sig_level = ccf_params.get('flux_jump_sig_level',None)
-    ccf_sig_level = ccf_params['sig_level']
     
     # We might chose to run the ROA for a single obervation period
     period_to_mjd_range = config.observation_params()['periods']
@@ -1145,10 +1143,11 @@ def FitPlot(model,select_period,overwrite=False):
 
     add_ext = '_{}_{}'.format(roa_params['model'],select_period)
 
+
     plt.rcParams.update({
         "font.family": "Sans",  
         "font.serif": ["DejaVu"],
-        "figure.figsize":[40,30],
+        "figure.figsize":[16,12],
         "font.size": 14})  
 
     samples_file = '{}/samples_flat{}.obj'.format(config.output_dir(),add_ext)
@@ -1203,19 +1202,15 @@ def FitPlot(model,select_period,overwrite=False):
             df = pd.read_csv(calib_file,
                              header=None,index_col=None,
                              quoting=csv.QUOTE_NONE,
-                             delim_whitespace=True).sort_values(0).loc[:,0:2]
-            # filter datapoints with large error
-            df = Utils.filter_large_sigma(df,ccf_sig_level,fltr)
-        
-            # filter datapoints with large flux jumps either side
-#            if ccf_flux_jump_sig_level:
-#                df = Utils.filter_large_sigma_jumps(df,ccf_flux_jump_sig_level,fltr)
-            
+                             delim_whitespace=True).sort_values(0)
             # Constrain to a single observation period if specified
             df = df[np.logical_and(df[0] > mjd_range[0],
                                    df[0] < mjd_range[1])]
 
-            df_to_numpy = df.to_numpy()
+            # Remove large sigma residuals from the calibration model
+            df = df[df[7] == False]
+
+            df_to_numpy = df.loc[:,0:2].to_numpy()
             
         mjd_min = np.minimum(np.min(df_to_numpy[:,0]), mjd_min)
         mjd_max = np.maximum(np.max(df_to_numpy[:,0]), mjd_max)
@@ -1252,46 +1247,70 @@ def FitPlot(model,select_period,overwrite=False):
         # Organise subplot layout
         #ax = fig.add_subplot(gs[i])
         
-        gssub = gs[i].subgridspec(1, 2, width_ratios=[5, 1])
+        gssub = gs[i].subgridspec(2, 2, width_ratios=[5, 1], height_ratios=[2,1], hspace=0, wspace=0)
         ax0 = fig.add_subplot(gssub[0,0])
         ax1 = fig.add_subplot(gssub[0,1])
+        ax0_resid = fig.add_subplot(gssub[1,0])
+        ax1_resid = fig.add_subplot(gssub[1,1])
 
         # Plot Data
-        ax0.errorbar(mjd, flux , yerr=err, ls='none', marker=".", color=band_colors[i], ms=2, elinewidth=0.75)
+        ax0.errorbar(mjd, flux , yerr=err, ls='none', marker=".", color=band_colors[i], ms=2, elinewidth=0.75, label='Calibrated lightcurve')
         # Plot Model
         t, m, errs = models[i]
         period_pick = np.logical_and(t >=mjd_min,t <= mjd_max)
         t = t[period_pick]
         m = m[period_pick]
         errs = errs[period_pick]
-        ax0.plot(t,m, color="black", lw=1)
+        ax0.plot(t,m, color="black", lw=1, label='Model')
         ax0.fill_between(t, m+errs, m-errs, alpha=0.5, color="black")
         ax0.set_ylabel("Flux ({})".format(fltr),rotation=0,labelpad=30)
         ax0.set_xlim(mjd_min,mjd_max)
+
+        # calculate residuals 
+        interp = interpolate.interp1d(t, m, kind="linear", fill_value="extrapolate")
+        interpmodel = interp(mjd)
+        residuals = interpmodel - flux
+        ax0_resid.plot(mjd,residuals, ls='none', marker='.', ms=0.75, color='#1f77b4', label='Residual')
+        ax0_resid.axhline(y = 0.0, color="black", ls="--",lw=0.5)
+        ax1_resid.hist(residuals, orientation="horizontal", color='#1f77b4')
+        ax1_resid.axhline(y = 0.0, color="black", ls="--",lw=0.5)
         
         # Plot Time delay posterior distributions
         tau_samples = samples_chunks[i][2]
-        ax1.hist(tau_samples, color=band_colors[i], bins=50)
+        ax1.hist(tau_samples, color=band_colors[i], bins=50, label=r'$\tau$ ROA dist')
         ax1.axvline(x = np.percentile(tau_samples, [16, 50, 84])[1], color="black",lw=0.5)
         ax1.axvline(x = np.percentile(tau_samples, [16, 50, 84])[0] , color="black", ls="--",lw=0.5)
         ax1.axvline(x = np.percentile(tau_samples, [16, 50, 84])[2], color="black",ls="--",lw=0.5)
         ax1.axvline(x = 0, color="black",ls="--")    
         ax1.yaxis.set_tick_params(labelleft=False)
         ax1.set_xlim(tau_min,tau_max)
+        
         if ccf_data[i] is not None:
-            ax1.hist(ccf_data[i], bins = 50, color = 'grey')
+            ax1.hist(ccf_data[i], bins = 50, color = 'grey', alpha=0.5, label=r'$\tau$ CCCD')
         
         if i == ilast:
-            ax0.set_xlabel("Time")
-            ax0.label_outer()
+            ax0_resid.set_xlabel("Time")
+            ax0_resid.label_outer()
         else:
-            ax1.xaxis.set_tick_params(labelbottom=False)
+            plt.setp(ax0_resid.get_xticklabels(), visible=False)            
         
+        plt.setp(ax0.get_xticklabels(), visible=False)
+        plt.setp(ax1.get_xticklabels(), visible=False)
+        plt.setp(ax1.get_yticklabels(), visible=False)
+        plt.setp(ax1_resid.get_yticklabels(), visible=False)
+        plt.setp(ax1_resid.get_xticklabels(), visible=False)
         ax1.set_yticks([])
+        ax1_resid.set_yticks([])
+        ax1_resid.set_xticks([])
+        ax0.legend(loc='lower left', fontsize=10)
+        ax0_resid.legend(loc='lower left', fontsize=10)
 
         if i == 0:
             title_ext = roa_model + ' {}'.format(select_period)
-            fig.suptitle('{} Lightcurves {}'.format(config.agn_name(), title_ext))
+            ax0.set_title('{} Lightcurves {}'.format(config.agn_name(), title_ext), pad=10.0)
+        else:
+            ax1.legend(loc='upper left', fontsize=10)
+        
 
     plt.subplots_adjust(wspace=0)
 

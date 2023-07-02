@@ -20,5 +20,8 @@
 		"mjd_range": [60065,60166]
 	    }
 	}
+    },
+    "calibration": {
+	"calib_fltr_order": ["g","i","B"]
     }
 }
