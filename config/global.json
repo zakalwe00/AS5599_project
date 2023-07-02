@@ -14,7 +14,7 @@
         ],
         "init_delta": 1.0,
 	"exclude_fltrs": [],
-        "sig_level": 3.0,
+        "sig_level": 2.7,
         "Nsamples": 25000,
         "Nburnin": 20000,
 	"Nparallel": 16
