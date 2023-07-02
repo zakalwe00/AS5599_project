@@ -15,9 +15,11 @@ __pycache__/
 
 # Data, graphs and temporary file output
 */output/*
+*/output.*/*
 *.dat
 *.err
 *.old
+*.aside
 *.test
 *tmp/
 */tmp/*
