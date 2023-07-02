@@ -15,11 +15,12 @@
     "ROA": {
 	"delay_ref":"g",
 	"select_period": "Aug2022-Dec2022",
+	"exclude_fltrs": ["V","r","u","z"],
 	"init_tau": {
 	    "g": 0.0,
-	    "B": -0.4,
+	    "B": 0.05,
 	    "V": 0.2,
-	    "i": -0.1,
+	    "i": 1.0,
 	    "r": 0.5,
 	    "u": -0.07,
 	    "z": 0.05

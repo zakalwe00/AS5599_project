@@ -20,8 +20,9 @@
 	"Nparallel": 16
     },
     "CCF": {
-	"MC_Iterations": 10000,
+	"MC_Iterations": 20000,
 	"Centroid_Threshold": 0.8,
+	"sig_level": 6.0,
         "lag_range": [
             -15.0,
             15.0
@@ -41,8 +42,8 @@
 	"sig_level": 4.0,
 	"use_backend": false,
 	"resume_progress": false,
-	"Nsamples": 25000,
-        "Nburnin": 20000,
+	"Nsamples": 35000,
+        "Nburnin": 30000,
 	"Nparallel": 16
     },
     "ROA_Model1": {

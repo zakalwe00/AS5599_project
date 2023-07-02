@@ -22,6 +22,8 @@
 	}
     },
     "calibration": {
-	"calib_fltr_order": ["g","i","B"]
+	"calib_fltr_order": ["g","i","B"],
+	"Nsamples": 35000,
+        "Nburnin": 30000
     }
 }

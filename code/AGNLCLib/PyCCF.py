@@ -3,6 +3,7 @@ import argparse
 import numpy as np
 import pandas as pd
 import csv
+import matplotlib
 from matplotlib import pyplot as plt
 import scipy
 # get the local copy of Utils
@@ -55,8 +56,8 @@ def PyCCF(model,fltr1,fltr2,overwrite=False):
         mjd_range = params["periods"][period]["mjd_range"]
 
         fltr1_period = fltr1_all[np.logical_and(fltr1_all[7] ==False,
-                                                fltr1_all[0] > mjd_range[0],
-                                                fltr1_all[0] < mjd_range[1])].loc[:,0:2]
+                                                np.logical_and(fltr1_all[0] > mjd_range[0],
+                                                               fltr1_all[0] < mjd_range[1]))].loc[:,0:2]
         fltr2_period = fltr2_all[np.logical_and(fltr2_all[7] ==False,
                                                 np.logical_and(fltr2_all[0] > mjd_range[0],
                                                                fltr2_all[0] < mjd_range[1]))].loc[:,0:2]
@@ -191,9 +192,12 @@ def PyCCF(model,fltr1,fltr2,overwrite=False):
         ax4.hist(tlags_peak, bins = bins, color = 'b')
         ax4.axvline(x = 0,color = 'gray')
 
-        plotccf = '{}/CCFResultsPlot_{}_{}_{}.png'.format(config.output_dir(),period,fltr1,fltr2)
+        plotccf = '{}/CCFResultsPlot_{}_{}_{}.pdf'.format(config.output_dir(),period,fltr1,fltr2)
         
-        plt.savefig(plotccf, format = 'png', orientation = 'landscape', bbox_inches = 'tight') 
-        plt.close(fig)
+        plt.savefig(plotccf)#, format = 'png', orientation = 'landscape', bbox_inches = 'tight')
+        if matplotlib.get_backend() == 'TkAgg':
+            plt.show()
+        else:
+            plt.close()
 
     return

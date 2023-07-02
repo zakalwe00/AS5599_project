@@ -1,4 +1,5 @@
 import os,argparse,socket,sys
+from itertools import count
 import pandas as pd
 import numpy as np
 import AGNLCLib
@@ -57,8 +58,26 @@ Available functions are {}".format(','.join([xx for xx in FUNCTION_MAPPING.keys(
 
     # Create lightcurve model for this AGN
     model = AGNLCLib.AGNLCModel(PROJECTDIR,CONFIGDIR,args.agn)
-    # run function
-    function(model,*function_args)
+
+    # run the filter plot for short sets of periods
+    if fargs[0] == 'calibrate_filt_plot':
+        periods = [kk for kk in model.config().observation_params()['periods'].keys()]
+        period_chunks = []
+        for pp in range(0,len(periods),2):
+            if pp == len(periods) - 1:
+                period_chunks[-1].append(periods[pp])
+            else:
+                period_chunks.append([periods[pp],periods[pp+1]])
+        old_period_map = model.config().observation_params()['periods']
+        for pc in period_chunks:
+            new_period_map = {}
+            for ppc in pc:
+                new_period_map[ppc] = old_period_map[ppc]
+            model.config().observation_params()['periods'] = new_period_map
+            function(model,*function_args)        
+    else:
+        # run function
+        function(model,*function_args)
     
 
         

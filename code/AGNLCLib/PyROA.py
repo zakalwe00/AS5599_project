@@ -97,6 +97,8 @@ def InterCalibrateFilt(model,fltr,overwrite=False):
     print("NWalkers="+str(int(2.0*Npar)))
     nwalkers, ndim = pos.shape
     sig_level = calib_params['sig_level']
+    # sigma level to remove from ccf calculation
+    ccf_sig_level = model.config().ccf_params()['sig_level']
 
     if Utils.check_file('{}/{}_calib_samples.obj'.format(config.output_dir(),fltr)) == False:
     
@@ -120,8 +122,8 @@ def InterCalibrateFilt(model,fltr,overwrite=False):
         filehandler = open('{}/{}_calib_samples.obj'.format(config.output_dir(),fltr),"rb")
         samples = pickle.load(filehandler)
 
-    filehandler = open('{}/{}_calib_labels.obj'.format(config.output_dir(),fltr),"rb")
-    labels = pickle.load(filehandler)
+        filehandler = open('{}/{}_calib_labels.obj'.format(config.output_dir(),fltr),"rb")
+        labels = pickle.load(filehandler)
     
     #####################################################################################
     # Repeat data shifting and ROA fit using best fit parameters
@@ -177,7 +179,7 @@ def InterCalibrateFilt(model,fltr,overwrite=False):
     Calibrated_mjd = []
     Calibrated_flux = []
     Calibrated_err = []
-    Calibration_clip = []
+    CCF_clip = []
                 
     Porc=Utils.CalculatePorc(merged_mjd, merged_flux, merged_err, delta)
     
@@ -201,7 +203,7 @@ def InterCalibrateFilt(model,fltr,overwrite=False):
                 
         #Sigma Clipping
         mask = (abs(interpmodel - flux) < sig_level*err)
-        
+
         #Shift by parameters
         flux = (flux - B)/A          
 
@@ -215,17 +217,22 @@ def InterCalibrateFilt(model,fltr,overwrite=False):
         for j in range(len(mjd)):
             Calibrated_mjd.append(mjd[j])
             Calibrated_flux.append(flux[j])
+            # Remove points at some ccf clip sigma level
+            # so that we can filter outliers in PyCCF
+            if (abs(interpmodel[j] - flux[j]) > ccf_sig_level*err[j]):
+                CCF_clip.append(True)
+            else:
+                CCF_clip.append(False)
+            
             if (abs(interpmodel[j] - flux[j]) > sig_level*err[j]):
                 Calibrated_err.append((abs(interpmodel[j] - flux[j])/sig_level))
-                Calibration_clip.append(True)
             else:
                 Calibrated_err.append(err[j])
-                Calibration_clip.append(False)
                 
     Calibrated_mjd = np.array(Calibrated_mjd)
     Calibrated_flux = np.array(Calibrated_flux)
     Calibrated_err = np.array(Calibrated_err)
-    Calibration_clip = np.array(Calibration_clip)
+    CCF_clip = np.array(CCF_clip)
                 
     print("<A> = ", np.mean(A_values))
     print("<B> = ", np.mean(B_values))
@@ -250,7 +257,7 @@ def InterCalibrateFilt(model,fltr,overwrite=False):
         'f4':Porc,
         'f5':interpmodel_j1,
         'f6':error_j1,
-        'b1':Calibration_clip
+        'b1':CCF_clip
     }).sort_values('f1')
     df.to_csv(output_file,
               header=False,sep=' ',float_format='%25.15e',index=False,
@@ -340,14 +347,15 @@ def ScopeRawPlot(model,fltr,select_period,overwrite=False):
     
 
 
-def InterCalibratePlot(model,fltr,select='A',corner_plot=False,overwrite=False):
+def InterCalibratePlot(model,fltr,select='A',corner_plot=True,overwrite=False,mask_clipped=True):
 
     print('Running PyROA InterCalibratePlot for filter {}'.format(fltr))
 
     # references for convenience
     config = model.config()
     calib_params = config.calibration_params()
-
+    ccf_sig_level = model.config().ccf_params()['sig_level']
+    
     # set up scopes to be used for calibration
     scopes = config.scopes()
     exclude_scopes = calib_params.get("exclude_scopes",[])
@@ -419,12 +427,18 @@ def InterCalibratePlot(model,fltr,select='A',corner_plot=False,overwrite=False):
         #ax0.fill_between(mjd_calib, flux_calib+err_calib, flux_calib-err_calib, alpha=0.5, color="black")
         plt.setp(ax0.get_xticklabels(), visible=False)        
         ax1 = plt.subplot(gs[axs_idx+1], sharex = ax0)
-        ax1.errorbar(mjd_calib_clipped, flux_calib_clipped, yerr=err_calib_clipped,
-                     ls='none', marker=".",
-                     color="black",
-                     label="Sigma\nclipped\nvalues\nremoved\n(level={})".format(calib_params['sig_level']))
+        if mask_clipped:
+            ax1.errorbar(mjd_calib_clipped, flux_calib_clipped, yerr=err_calib_clipped,
+                         ls='none', marker=".",
+                         color="black",
+                         label="Sigma\nclipped\nvalues\nremoved\n(level={})".format(ccf_sig_level))
+        else:
+            ax1.errorbar(mjd_calib, flux_calib, yerr=err_calib,
+                         ls='none', marker=".",
+                         color="black",
+                         label="Calibrated\nLC Error")
         ax1.set_ylabel('Flux (mJy) {}'.format(period))
-        ax1.yaxis.set_label_coords(-0.03,1.35)
+        ax1.yaxis.set_label_coords(-0.04,1.35)
         # Shrink x=axis by 10% in order to fit the legend on the right
         box = ax0.get_position()
         ax0.set_position([box.x0, box.y0, box.width * 0.9, box.height])
@@ -435,8 +449,9 @@ def InterCalibratePlot(model,fltr,select='A',corner_plot=False,overwrite=False):
             # Put a legend containing telescope names to the right in the cleared space
             ax0.legend(loc='center left', bbox_to_anchor=(1.0, 0.05))
             ax1.legend(loc='center left', bbox_to_anchor=(1.0, -1.2))
-    ax1.set_xlabel('Time (days, MJD)')    
-    output_file = '{}/{}_Calibration_Plot.pdf'.format(config.output_dir(),fltr)
+    ax1.set_xlabel('Time (days, MJD)')
+    periods = [kk for kk in model.config().observation_params()['periods'].keys()]        
+    output_file = '{}/{}_Calibration_Plot_{}_{}.pdf'.format(config.output_dir(),fltr,periods[0],periods[-1])
     if (os.path.exists(output_file) == True) and (overwrite == False):
         print('Not writing PyROA InterCalibratePlot, file exists: {}'.format(output_file))
     else:
@@ -451,6 +466,9 @@ def InterCalibratePlot(model,fltr,select='A',corner_plot=False,overwrite=False):
         return
     
     output_file = '{}/{}_{}_Calibration_CornerPlot.pdf'.format(config.output_dir(),select,fltr)
+    if (os.path.exists(output_file) == True) and (overwrite == False):
+        print('Not writing PyROA InterCalibratePlot (Corner), file exists: {}'.format(output_file))
+        return
 
     # Generate params list
     samples_chunks = [np.transpose(samples_flat)[i:i + 3] for i in range(0, len(np.transpose(samples_flat)), 3)]
@@ -497,11 +515,8 @@ def InterCalibratePlot(model,fltr,select='A',corner_plot=False,overwrite=False):
         print('Invalid chains select input ({}), no action'.format(select))
         return
 
-    if (os.path.exists(output_file) == True) and (overwrite == False):
-        print('Not writing PyROA InterCalibratePlot (Corner), file exists: {}'.format(output_file))
-    else:
-        print('Writing calibration plot {}'.format(output_file))
-        plt.savefig(output_file)
+    print('Writing calibration plot {}'.format(output_file))
+    plt.savefig(output_file)
 
     if matplotlib.get_backend() == 'TkAgg':
         plt.show()
