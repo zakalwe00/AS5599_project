@@ -17,7 +17,7 @@
         "sig_level": 4.0,
         "Nsamples": 25000,
         "Nburnin": 20000,
-	"Nparallel": 16
+	"Nparallel": 24
     },
     "CCF": {
 	"MC_Iterations": 20000,
@@ -44,7 +44,7 @@
 	"resume_progress": false,
 	"Nsamples": 25000,
         "Nburnin": 20000,
-	"Nparallel": 16
+	"Nparallel": 24
     },
     "ROA_Model1": {
 	"delay_dist": false,

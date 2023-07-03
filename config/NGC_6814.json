@@ -11,7 +11,7 @@
     },
     "calibration": {
 	"calib_fltr_order": ["g"],
-	"exclude_fltrs": ["i","z"],
+	"exclude_fltrs": ["i","z"]
     },
     "ROA": {
 	"delay_ref":"g",
