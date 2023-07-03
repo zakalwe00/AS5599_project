@@ -10,15 +10,16 @@
 	}
     },
     "calibration": {
-	"calib_fltr_order": ["g","i","B"]
+	"calib_fltr_order": ["g"],
+	"exclude_fltrs": ["i","z"],
     },
     "ROA": {
 	"delay_ref":"g",
-	"select_period": "Aug2022-Dec2022",
-	"exclude_fltrs": ["V","r","u","z"],
+	"exclude_fltrs": ["i","z"],
+	"delta_prior": [2.0,30.0],
 	"init_tau": {
 	    "g": 0.0,
-	    "B": 0.05,
+	    "B": -0.05,
 	    "V": 0.2,
 	    "i": 1.0,
 	    "r": 0.5,
