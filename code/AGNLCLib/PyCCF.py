@@ -44,9 +44,6 @@ def PyCCF(model,fltr1,fltr2,overwrite=False):
     # lag range of data considered by year
     for period in params["periods"]:        
         centroidfile = '{}/Centroid_{}_{}_{}.dat'.format(config.output_dir(),period,fltr1,fltr2)
-        if (Utils.check_file(centroidfile) == True) and (overwrite == False):
-            print('Not running period {} {} vs {} calibration, file exists: {}'.format(period,fltr1,fltr2,centroidfile))
-            break
             
         #########################################
         ##Set Interpolation settings, user-specified
@@ -71,6 +68,9 @@ def PyCCF(model,fltr1,fltr2,overwrite=False):
                                                                                        fltr1,fltr2,
                                                                                        '{:.3f}'.format(median_cad1),
                                                                                        '{:.3f}'.format(median_cad2)))
+        if (Utils.check_file(centroidfile) == True) and (overwrite == False):
+            print('Not running period {} {} vs {} calibration, file exists: {}'.format(period,fltr1,fltr2,centroidfile))
+            continue
 
         # Interpolation time step (days). Must be less than the average cadence of the observations, but too small will introduce noise.
         # Consider the lowest median cadence from both curves and round down to nearest 1/20 days,

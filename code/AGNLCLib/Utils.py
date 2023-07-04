@@ -298,8 +298,6 @@ def _log_prior_calib(params, priors, s, init_params_chunks):
         # This is per the 2023 paper
         #A_prior.append(-2.0*np.log(lnA_prior_width*np.sqrt(2.0*np.pi)) - (np.log(A)/lnA_prior_width)**2.0)
         B_prior.append(-2.0*np.log(B_prior_width*np.sqrt(2.0*np.pi)) - (B/B_prior_width)**2.0)
-
-
         
         if sig_prior[0] < sig < sig_prior[1]:
             check.append(0.0)
@@ -805,7 +803,9 @@ def median_cadence(mjds, min_sep=2.5):
     min_sep_day_frac = 2.5/24.0
     diffs = mjds[1:] - mjds[:-1]
     diffs = diffs[diffs > min_sep_day_frac]
-    return np.median(diffs)
+    med_cad = np.median(diffs)
+    print('Calculated median cadence={:5.2f} from {} epoch diffs'.format(med_cad,len(diffs)))
+    return med_cad
 
 ########################################
 # File Operations                      #

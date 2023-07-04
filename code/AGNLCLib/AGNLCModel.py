@@ -84,8 +84,9 @@ class AGNLCModelConfig():
         self.set_calib_fltrs(fltrs)
     def set_calib_fltrs(self,fltrs):
         calib_fltr_order =  self._calibration_params.get("calib_fltr_order",[])
-        self._calib_fltrs = [ff for ff in calib_fltr_order if ff in fltrs]
-        self._calib_fltrs = self._calib_fltrs + [ff for ff in fltrs if ff not in calib_fltr_order]
+        calib_fltr_exclude =  self._calibration_params.get("exclude_fltrs",[])
+        self._calib_fltrs = [ff for ff in calib_fltr_order if (ff in fltrs and ff not in calib_fltr_exclude)]
+        self._calib_fltrs = self._calib_fltrs + [ff for ff in fltrs if (ff not in calib_fltr_order and ff not in calib_fltr_exclude)]
     def set_output_dir(self, output_dir): self._output_dir = output_dir
     def _dump_params(self,tmp_dir,noprint=True):
         params = {'data': self._data_params,

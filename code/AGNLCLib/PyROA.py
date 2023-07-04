@@ -1265,7 +1265,7 @@ def FitPlot(model,select_period,overwrite=False):
         ax0.fill_between(t, m+errs, m-errs, alpha=0.5, color="black")
         ax0.set_ylabel("Flux ({})".format(fltr),rotation=0,labelpad=30)
         ax0.set_xlim(mjd_min,mjd_max)
-        flux_margin = np.mean(flux)*0.08
+        flux_margin = (np.max(flux) - np.min(flux))*0.1
         ax0.set_ylim(np.min(flux)-flux_margin,np.max(flux)+flux_margin)
         
         # calculate residuals 

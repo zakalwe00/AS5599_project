@@ -21,8 +21,8 @@ model = AGNLCLib.AGNLCModel(PROJECTDIR,CONFIGDIR,AGN)
 
 for fltr in model.config().calib_fltrs():
     for period in model.config().observation_params()['periods']:
-        AGNLCLib.ScopeRawPlot(model,fltr,period,overwrite=True)
-        
+#        AGNLCLib.ScopeRawPlot(model,fltr,period,overwrite=True)
+#        
         
 
 
