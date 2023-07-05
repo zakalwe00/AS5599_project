@@ -529,7 +529,7 @@ def InterCalibratePlot(model,fltr,select='A',corner_plot=True,overwrite=False,ma
     else:
         plt.close()
 
-def Fit(model, overwrite=False, select_period=None):
+def Fit(model, select_period, overwrite=False):
     config = model.config()
     roa_params = config.roa_params()
 
@@ -551,7 +551,6 @@ def Fit(model, overwrite=False, select_period=None):
     include_slow_comp = roa_params["include_slow_comp"]
     slow_comp_delta = roa_params["slow_comp_delta"]
     delay_dist = roa_params.get("delay_dist",False)
-    mjd_range = None
     wavelengths = None
     
     # tau initialisation by filter
@@ -578,12 +577,11 @@ def Fit(model, overwrite=False, select_period=None):
     add_ext = '_{}'.format(roa_params['model'])
 
     # We might chose to run the ROA for a single obervation period
-    if select_period:
-        period_to_mjd_range = config.observation_params()['periods']
-        if select_period not in period_to_mjd_range:
-            raise Exception('Error: selected period {} not in observation periods for {}, check config'.format(select_period,config.agn_name()))
-        mjd_range = config.observation_params()['periods'][select_period]['mjd_range']
-        add_ext = add_ext + '_{}'.format(select_period)
+    period_to_mjd_range = config.observation_params()['periods']
+    if select_period not in period_to_mjd_range:
+        raise Exception('Error: selected period {} not in observation periods for {}, check config'.format(select_period,config.agn_name()))
+    mjd_range = config.observation_params()['periods'][select_period]['mjd_range']
+    add_ext = add_ext + '_{}'.format(select_period)
 
     output_file = '{}/samples_flat{}.obj'.format(config.output_dir(),add_ext)
     if Utils.check_file(output_file) == True and overwrite==False:
@@ -600,9 +598,9 @@ def Fit(model, overwrite=False, select_period=None):
                                       header=None,index_col=None,
                                       quoting=csv.QUOTE_NONE,
                                       delim_whitespace=True).sort_values(0).loc[:,0:2].to_numpy()
-            if mjd_range:
-                df_to_numpy = df_to_numpy[np.logical_and(df_to_numpy[:,0] >= mjd_range[0],
-                                                         df_to_numpy[:,0] <= mjd_range[1])]
+
+            df_to_numpy = df_to_numpy[np.logical_and(df_to_numpy[:,0] >= mjd_range[0],
+                                                     df_to_numpy[:,0] <= mjd_range[1])]
             
             data.append(df_to_numpy)
     
@@ -1129,7 +1127,6 @@ def FitPlot(model,select_period,overwrite=False):
     sig_level = roa_params["sig_level"]
     delay_ref = roa_params["delay_ref"]
     roa_model = roa_params["model"]
-    mjd_range = None
     
     # We might chose to run the ROA for a single obervation period
     period_to_mjd_range = config.observation_params()['periods']
@@ -1209,8 +1206,8 @@ def FitPlot(model,select_period,overwrite=False):
                              quoting=csv.QUOTE_NONE,
                              delim_whitespace=True).sort_values(0)
             # Constrain to a single observation period if specified
-            df = df[np.logical_and(df[0] > mjd_range[0],
-                                   df[0] < mjd_range[1])]
+            df = df[np.logical_and(df[0] >= mjd_range[0],
+                                   df[0] <= mjd_range[1])]
 
             # Remove large sigma residuals from the calibration model
             df = df[df[7] == False]
@@ -1333,16 +1330,18 @@ def FitPlot(model,select_period,overwrite=False):
         plt.close()
 
 
-def CalibrationPlot(model,overwrite=True):
+def CalibrationPlot(model,select_period,overwrite=False):
 
     config = model.config()
-    fltrs = config.fltrs()
+    fltrs = config.calib_fltrs()
+
+    period_to_mjd_range = config.observation_params()['periods']
+    if select_period not in period_to_mjd_range:
+        raise Exception('Error: selected period {} not in observation periods for {}, check config'.format(select_period,config.agn_name()))
+    mjd_range = config.observation_params()['periods'][select_period]['mjd_range']
     
     # All the calibrated lightcurves pre-fitting on the same plot
-    calib_curve_plot = '{}/Calibrated_LCs.pdf'.format(config.output_dir())
-    if Utils.check_file(calib_curve_plot) == True and overwrite==False:
-        print('Not running CalibrationPlot, file exists: {}'.format(calib_curve_plot))
-        return
+    calib_curve_plot = '{}/Calibrated_LCs_{}.pdf'.format(config.output_dir(),select_period)
 
     data=[]
     plt.style.use(['seaborn'])
@@ -1352,12 +1351,21 @@ def CalibrationPlot(model,overwrite=True):
         "figure.figsize":[40,15],
         "font.size": 14})
     fig, axs = plt.subplots(len(fltrs),sharex=True)
-    fig.suptitle('{} Calibrated light curves'.format(config.agn_name()))
+    fig.suptitle('{} {} Calibrated light curves'.format(config.agn_name(),select_period))
     for i,fltr in enumerate(fltrs):
         calib_file = '{}/{}_{}.dat'.format(config.output_dir(),config.agn_name(),fltr)
-        data.append(pd.read_csv(calib_file,
-                                header=None,index_col=None,
-                                quoting=csv.QUOTE_NONE,delim_whitespace=True).sort_values(0))
+        df = pd.read_csv(calib_file,
+                         header=None,index_col=None,
+                         quoting=csv.QUOTE_NONE,
+                         delim_whitespace=True).sort_values(0)
+        # Constrain to a single observation year
+        df = df[np.logical_and(df[0] >= mjd_range[0],
+                               df[0] <= mjd_range[1])]
+
+        # Remove large sigma residuals from the calibration model for display
+        df = df[df[7] == False]
+        data.append(df)
+        
         mjd = data[i][0]
         flux = data[i][1]
         err = data[i][2]
@@ -1365,14 +1373,18 @@ def CalibrationPlot(model,overwrite=True):
         axs[i].set_ylabel('{} filter flux'.format(fltr))
 
     axs[-1].set_xlabel('Time (days, MJD)')
-    print('Writing {}'.format(calib_curve_plot))
-    plt.savefig(calib_curve_plot)
-    plt.close()
-
+    if Utils.check_file(calib_curve_plot) == True and overwrite==False:
+        print('Not writing Calibrated light curve plot, file exists: {}'.format(calib_curve_plot))
+    else:
+        plt.savefig(calib_curve_plot)
+    if matplotlib.get_backend() == 'TkAgg':
+        plt.show()
+    else:
+        plt.close()
     return
 
 
-def CalibrationSNR(model,select_period=None,overwrite=False):
+def CalibrationSNR(model,select_period,overwrite=False):
     print('Running PyROA CalibrationSNR')
 
     # references for convenience
@@ -1392,14 +1404,12 @@ def CalibrationSNR(model,select_period=None,overwrite=False):
     
     data=[]
 
-    mjd_range = None
     # We might chose to display SNR for a single obervation period
-    if select_period:
-        period_to_mjd_range = config.observation_params()['periods']
-        if select_period not in period_to_mjd_range:
-            raise Exception('Error: selected period {} not in observation periods for {}, check config'.format(select_period,config.agn_name()))
-        mjd_range = config.observation_params()['periods'][select_period]['mjd_range']
-        add_ext = add_ext + ' {}'.format(select_period)
+    period_to_mjd_range = config.observation_params()['periods']
+    if select_period not in period_to_mjd_range:
+        raise Exception('Error: selected period {} not in observation periods for {}, check config'.format(select_period,config.agn_name()))
+    mjd_range = config.observation_params()['periods'][select_period]['mjd_range']
+    add_ext = add_ext + ' {}'.format(select_period)
 
     snr = []
     for fltr in fltrs:
@@ -1411,9 +1421,8 @@ def CalibrationSNR(model,select_period=None,overwrite=False):
                              header=None,index_col=None,
                              quoting=csv.QUOTE_NONE,
                              delim_whitespace=True).sort_values(0).loc[:,0:2]
-            if mjd_range:
-                df = df[np.logical_and(df[0] > mjd_range[0],
-                                       df[0] < mjd_range[1])]
+            df = df[np.logical_and(df[0] >= mjd_range[0],
+                                   df[0] <= mjd_range[1])]
             
             snr.append(Utils.signal_to_noise(df,sig_level,fltr))
 
@@ -1422,7 +1431,7 @@ def CalibrationSNR(model,select_period=None,overwrite=False):
     print(tabulate([snr],headers=fltrs))
 
 
-def ConvergencePlot(model,select_period=None,overwrite=False):
+def ConvergencePlot(model,select_period,overwrite=False):
 
     config = model.config()
     roa_params = config.roa_params()
@@ -1430,8 +1439,6 @@ def ConvergencePlot(model,select_period=None,overwrite=False):
     Nsamples = roa_params["Nsamples"]
     Nburnin = roa_params["Nburnin"]
 
-    mjd_range = None
-    
     # tau initialisation by filter
     delay_ref = roa_params["delay_ref"]
     exclude_fltrs = roa_params["exclude_fltrs"]    
@@ -1441,8 +1448,7 @@ def ConvergencePlot(model,select_period=None,overwrite=False):
     fltrs = [delay_ref] + fltrs
 
     add_ext = '_{}'.format(roa_params['model'])
-    if select_period:
-        add_ext = add_ext = '_{}'.format(select_period)
+    add_ext = add_ext + '_{}'.format(select_period)
 
     samples_file = '{}/samples_flat{}.obj'.format(config.output_dir(),add_ext)
     if Utils.check_file(samples_file) == False:
@@ -1485,21 +1491,19 @@ def ConvergencePlot(model,select_period=None,overwrite=False):
     else:
         plt.close()
 
-def ChainsPlot(model,select='tau',select_period=None,start_sample=0,overwrite=False):
+def ChainsPlot(model,select_period,select='tau',start_sample=0,overwrite=False):
     config = model.config()
     roa_params = config.roa_params()
 
     delay_ref = roa_params["delay_ref"]
     roa_model = roa_params["model"]
     Nburnin = roa_params["Nburnin"]
-    mjd_range = None
 
     # We might chose to run the ROA for a single obervation period
-    if select_period:
-        period_to_mjd_range = config.observation_params()['periods']
-        if select_period not in period_to_mjd_range:
-            raise Exception('Error: selected period {} not in observation periods for {}, check config'.format(select_period,config.agn_name()))
-        mjd_range = config.observation_params()['periods'][select_period]['mjd_range']
+    period_to_mjd_range = config.observation_params()['periods']
+    if select_period not in period_to_mjd_range:
+        raise Exception('Error: selected period {} not in observation periods for {}, check config'.format(select_period,config.agn_name()))
+    mjd_range = config.observation_params()['periods'][select_period]['mjd_range']
 
     exclude_fltrs = roa_params["exclude_fltrs"]    
     fltrs = config.fltrs()
@@ -1511,9 +1515,7 @@ def ChainsPlot(model,select='tau',select_period=None,start_sample=0,overwrite=Fa
         raise Exception('Insufficient filter bands passed to PyROA FitPlot: {} with reference filter {}'.format(fltrs,delay_ref))
     
     add_ext = '_{}'.format(roa_model)
-
-    if select_period:
-        add_ext = add_ext +  '_{}'.format(select_period)
+    add_ext = add_ext +  '_{}'.format(select_period)
     
     samples_file = '{}/samples{}.obj'.format(config.output_dir(),add_ext)
     if Utils.check_file(samples_file) == False:
@@ -1630,21 +1632,13 @@ def ChainsPlot(model,select='tau',select_period=None,start_sample=0,overwrite=Fa
     else:
         plt.close()
 
-def CornerPlot(model,select='tau',select_period=None,overwrite=False):
+def CornerPlot(model,select_period,select='tau',overwrite=False):
     config = model.config()
     roa_params = config.roa_params()
 
     delay_ref = roa_params['delay_ref']
     roa_model = roa_params['model']
     Nburnin = roa_params['Nburnin']
-    mjd_range = None
-
-    # We might chose to run the ROA for a single obervation period
-    if select_period:
-        period_to_mjd_range = config.observation_params()['periods']
-        if select_period not in period_to_mjd_range:
-            raise Exception('Error: selected period {} not in observation periods for {}, check config'.format(select_period,config.agn_name()))
-        mjd_range = config.observation_params()['periods'][select_period]['mjd_range']
 
     exclude_fltrs = roa_params['exclude_fltrs']    
     fltrs = config.fltrs()
@@ -1656,8 +1650,7 @@ def CornerPlot(model,select='tau',select_period=None,overwrite=False):
         raise Exception('Insufficient filter bands passed to PyROA FitPlot: {} with reference filter {}'.format(fltrs,delay_ref))
     
     add_ext = '_{}'.format(roa_model)
-    if select_period:
-        add_ext = add_ext + '_{}'.format(select_period)
+    add_ext = add_ext + '_{}'.format(select_period)
     
     output_file = '{}/ROA_Corner{}_{}.pdf'.format(config.output_dir(),add_ext,select)
     if Utils.check_file(output_file) == True and overwrite==False:
