@@ -353,7 +353,7 @@ def ScopeRawPlot(model,fltr,select_period,overwrite=False):
     
 
 
-def InterCalibratePlot(model,fltr,select='A',corner_plot=True,overwrite=False,mask_clipped=True):
+def InterCalibratePlot(model,fltr,select='A',corner_plot=True,overwrite=False,mask_clipped=False):
 
     print('Running PyROA InterCalibratePlot for filter {}'.format(fltr))
 
@@ -407,7 +407,7 @@ def InterCalibratePlot(model,fltr,select='A',corner_plot=True,overwrite=False,ma
     fig = plt.figure()
     height_ratios = []
     for ii in period_to_mjd_range:
-        height_ratios = height_ratios + [2,1.5]
+        height_ratios = height_ratios + [2,2]
     gs = gridspec.GridSpec(2*len(period_to_mjd_range.keys()), 1, height_ratios=height_ratios,hspace=0) 
 
     for i,period in enumerate(period_to_mjd_range):
@@ -429,7 +429,7 @@ def InterCalibratePlot(model,fltr,select='A',corner_plot=True,overwrite=False,ma
         mjd_calib_clipped = df[0][err_mask].to_numpy()
         flux_calib_clipped = df[1][err_mask].to_numpy()
         err_calib_clipped = df[2][err_mask].to_numpy()
-        ax0.plot(mjd_calib, flux_calib, color="black", label="Calibrated", alpha=0.5)
+        #ax0.plot(mjd_calib, flux_calib, color="black", label="Calibrated", alpha=0.5)
         #ax0.fill_between(mjd_calib, flux_calib+err_calib, flux_calib-err_calib, alpha=0.5, color="black")
         plt.setp(ax0.get_xticklabels(), visible=False)        
         ax1 = plt.subplot(gs[axs_idx+1], sharex = ax0)
@@ -442,7 +442,7 @@ def InterCalibratePlot(model,fltr,select='A',corner_plot=True,overwrite=False,ma
             ax1.errorbar(mjd_calib, flux_calib, yerr=err_calib,
                          ls='none', marker=".",
                          color="black",
-                         label="Calibrated\nLC Error")
+                         label="Calibrated\nlight curve")
         ax1.set_ylabel('Flux (mJy) {}'.format(period))
         ax1.yaxis.set_label_coords(-0.04,1.35)
         # Shrink x=axis by 10% in order to fit the legend on the right
@@ -453,7 +453,7 @@ def InterCalibratePlot(model,fltr,select='A',corner_plot=True,overwrite=False,ma
         if axs_idx == 0:
             ax0.set_title('{} Individual telescope and calibrated light curves for {}'.format(config.agn_name(),fltr))
             # Put a legend containing telescope names to the right in the cleared space
-            ax0.legend(loc='center left', bbox_to_anchor=(1.0, 0.05))
+            ax0.legend(title="Telescope list",loc='center left', bbox_to_anchor=(1.0, 0.05))
             ax1.legend(loc='center left', bbox_to_anchor=(1.0, -1.2))
     ax1.set_xlabel('Time (days, MJD)')
     periods = [kk for kk in model.config().observation_params()['periods'].keys()]        
