@@ -26,32 +26,32 @@ output_file = '{}/response.pdf'.format(output_dir)
 plt.rcParams.update({
     "font.family": "Sans", 
     "font.serif": ["DejaVu"],
-    "figure.figsize":[12,9],
+    "figure.figsize":[8,6.5],
     "font.size": 14})
 
 for i,fltr in enumerate(bessell_fltr_names):
     data_file = '{}/{}.csv'.format(output_dir,bessell_fltr_names[fltr])
     df = pd.read_csv(data_file)
     df_numpy = df.to_numpy()
-    plt.plot(df_numpy[:,0],df_numpy[:,1],label='Bessell {}'.format(fltr))
+    plt.plot(df_numpy[:,0],df_numpy[:,1],label='{}'.format(fltr))
     
 for i,fltr in enumerate(sdss_fltr_names):
     data_file = '{}/{}.csv'.format(output_dir,sdss_fltr_names[fltr])
     df = pd.read_csv(data_file)
     df_numpy = df.to_numpy()
-    plt.plot(df_numpy[:,0],df_numpy[:,1],label='SDSS {}'.format(fltr))
+    plt.plot(df_numpy[:,0],df_numpy[:,1],label='{}'.format(fltr))
     
 for i,fltr in enumerate(panstarrs_fltr_names):
     data_file = '{}/{}.csv'.format(output_dir,panstarrs_fltr_names[fltr])
     df = pd.read_csv(data_file)
     df_numpy = df.to_numpy()
-    plt.plot(df_numpy[:,0],df_numpy[:,1],label='Pan-STARRS {}'.format(fltr))
+    plt.plot(df_numpy[:,0],df_numpy[:,1],label='{}'.format(fltr))
 
 plt.xlabel('$\lambda$ [nm]')
 plt.ylabel('Transmission')
 plt.yscale('log')
 plt.ylim(1e-2,1.5)
-plt.xlim(230,1200)
+plt.xlim(230,1120)
 plt.legend(loc='center right')
 plt.title("Filter band transmission response",fontsize=16)
 # make a plot

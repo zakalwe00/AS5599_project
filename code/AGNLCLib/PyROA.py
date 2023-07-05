@@ -32,6 +32,7 @@ def InterCalibrateFilt(model,fltr,overwrite=False):
     # set up scopes to be used for calibration
     scopes = config.scopes()
     exclude_scopes = calib_params.get("exclude_scopes",[])
+    constrain_dates = calib_params.get("constrain_dates",None)
     scopes = [scope for scope in scopes if scope not in exclude_scopes]
     print('Calibrating data for {} with {} excluded'.format(scopes,exclude_scopes))
 
@@ -46,20 +47,16 @@ def InterCalibrateFilt(model,fltr,overwrite=False):
             print("")
         else:
             dd = np.loadtxt(scope_file)
-            data.append(dd)
-            scopes_array.append([scope]*dd.shape[0])
+            if constrain_dates is not None:
+                dd = dd[np.logical_and(dd[:,0] >= constrain_dates[0],dd[:,0] <= constrain_dates[1]),:]
+            if dd.shape[0] != 0:
+                data.append(dd)
+                scopes_array.append([scope]*dd.shape[0])
             
     scopes_array = [item for sublist in scopes_array for item in sublist]
 
     output_file = '{}/{}_{}.dat'.format(config.output_dir(),config.agn_name(),fltr)
 
-    if Utils.check_file(output_file) == True and overwrite==False:
-        print('Not running filter {} calibration, file exists: {}'.format(fltr, output_file))
-        return
-
-    ########################################################################################    
-    # No calibration data for this filter exists
-    ########################################################################################        
     # Run MCMC to fit to data
     Npar = 3*len(data) + 1
     
@@ -97,8 +94,20 @@ def InterCalibrateFilt(model,fltr,overwrite=False):
     print("NWalkers="+str(int(2.0*Npar)))
     nwalkers, ndim = pos.shape
     sig_level = calib_params['sig_level']
+    override_sig_level = calib_params.get("override_sig_level",None)
+    if override_sig_level and fltr in override_sig_level:
+        print('Override sig_level={} for {} to {}'.format(sig_level,fltr,override_sig_level[fltr]))
+        sig_level = override_sig_level[fltr]
     # sigma level to remove from ccf calculation
     ccf_sig_level = model.config().ccf_params()['sig_level']
+
+    if Utils.check_file(output_file) == True and overwrite==False:
+        print('Not running filter {} calibration, file exists: {}'.format(fltr, output_file))
+        return
+
+    ########################################################################################    
+    # No calibration data for this filter exists
+    ########################################################################################        
 
     if Utils.check_file('{}/{}_calib_samples.obj'.format(config.output_dir(),fltr)) == False:
     
@@ -305,12 +314,13 @@ def ScopeRawPlot(model,fltr,select_period,overwrite=False):
         scope_file = '{}/{}_{}_{}.dat'.format(config.output_dir(),config.agn_name(),fltr,scope)
         #Check if file is empty
         dd = np.loadtxt(scope_file)
-        dd = dd[np.logical_and(dd[:,0] >= mjd_range[0],dd[:,0] <= mjd_range[1]),:]
-        data.append(dd)
         if dd.shape[0] != 0:
-            print('{} mean flux={:7.5f} std dev={:7.5f}, mean err={:7.5f}'.format(scope,np.mean(dd[:,1]),
-                                                                                  np.std(dd[:,1]),
-                                                                                  np.mean(dd[:,2])))            
+            dd = dd[np.logical_and(dd[:,0] >= mjd_range[0],dd[:,0] <= mjd_range[1]),:]
+            if dd.shape[0] != 0:
+                print('{} mean flux={:7.5f} std dev={:7.5f}, mean err={:7.5f}'.format(scope,np.mean(dd[:,1]),
+                                                                                      np.std(dd[:,1]),
+                                                                                      np.mean(dd[:,2])))            
+                data.append(dd)
     
     plt.rcParams.update({
         "font.family": "Sans", 
@@ -325,11 +335,6 @@ def ScopeRawPlot(model,fltr,select_period,overwrite=False):
         mjd = data[i][:,0]
         flux = data[i][:,1]
         err = data[i][:,2]
-#        if scopes[i] in exclude_scopes:
-#            color="red"
-#        else:
-#            color="blue"
-#        plt.errorbar(mjd, flux, yerr=err, ls='none', marker=".", label=str(scopes[i]), color=color, alpha=0.5)
         plt.errorbar(mjd, flux, yerr=err, ls='none', marker=".", label=str(scopes[i]))
 
     plt.xlabel("mjd")
@@ -596,8 +601,8 @@ def Fit(model, overwrite=False, select_period=None):
                                       quoting=csv.QUOTE_NONE,
                                       delim_whitespace=True).sort_values(0).loc[:,0:2].to_numpy()
             if mjd_range:
-                df_to_numpy = df_to_numpy[np.logical_and(df_to_numpy[:,0] > mjd_range[0],
-                                                         df_to_numpy[:,0] < mjd_range[1])]
+                df_to_numpy = df_to_numpy[np.logical_and(df_to_numpy[:,0] >= mjd_range[0],
+                                                         df_to_numpy[:,0] <= mjd_range[1])]
             
             data.append(df_to_numpy)
     

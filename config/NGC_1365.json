@@ -1,27 +1,13 @@
 {
     "observation": {
         "periods": {
-	    "Jun2018-Feb2019": {
-		"mjd_range": [58270,58543]
-	    },
-	    "May2019-Feb2020": {
-		"mjd_range": [58604,58909]
-	    },
-	    "May2020-Feb2021": {
-		"mjd_range": [58970,59274]
-	    },
-	    "May2021-Feb2022": {
-		"mjd_range": [59335,59639]
-	    },
-	    "May2022-Feb2023": {
-		"mjd_range": [59700,60004]
-	    },
-	    "May2023-Current": {
-		"mjd_range": [60065,60166]
+	    "May22-Mar23": {
+		"mjd_range": [59700,60050]
 	    }
 	}
     },
     "calibration": {
+	"constrain_dates": [59700,60050],
 	"calib_fltr_order": ["g","i","B"]
     }
 }

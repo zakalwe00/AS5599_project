@@ -52,22 +52,32 @@ def PyCCF(model,fltr1,fltr2,overwrite=False):
         # from May to the following Feb
         mjd_range = params["periods"][period]["mjd_range"]
 
-        fltr1_period = fltr1_all[np.logical_and(fltr1_all[7] ==False,
-                                                np.logical_and(fltr1_all[0] > mjd_range[0],
-                                                               fltr1_all[0] < mjd_range[1]))].loc[:,0:2]
-        fltr2_period = fltr2_all[np.logical_and(fltr2_all[7] ==False,
-                                                np.logical_and(fltr2_all[0] > mjd_range[0],
-                                                               fltr2_all[0] < mjd_range[1]))].loc[:,0:2]
+        fltr1_period = fltr1_all[np.logical_and(fltr1_all[0] >= mjd_range[0],
+                                                fltr1_all[0] <= mjd_range[1])]
+        fltr2_period = fltr2_all[np.logical_and(fltr2_all[0] >= mjd_range[0],
+                                                fltr2_all[0] <= mjd_range[1])]
+
+        mjd1,flux1,err1 = [col for col in fltr1_period.loc[:,0:2].T.to_numpy()]
+        mjd2,flux2,err2 = [col for col in fltr2_period.loc[:,0:2].T.to_numpy()]
+
+        median_cad1 = Utils.median_cadence(mjd1)
+        median_cad2 = Utils.median_cadence(mjd2)
+        print('Obs {0}, {3}+{4}, {1}+{2} unfiltered datapts, med cadence {5}+{6} (used for report)'.format(period,len(mjd1),len(mjd2),
+                                                                                                           fltr1,fltr2,
+                                                                                                           '{:.3f}'.format(median_cad1),
+                                                                                                           '{:.3f}'.format(median_cad2)))
+        fltr1_period = fltr1_period[fltr1_period[7] == False].loc[:,0:2]
+        fltr2_period = fltr2_period[fltr2_period[7] == False].loc[:,0:2]
 
         mjd1,flux1,err1 = [col for col in fltr1_period.T.to_numpy()]
         mjd2,flux2,err2 = [col for col in fltr2_period.T.to_numpy()]
-            
+
         median_cad1 = Utils.median_cadence(mjd1)
         median_cad2 = Utils.median_cadence(mjd2)
-        print('Obs {0}, {3}+{4}, {1}+{2} filtered datapts, med cadence {5}+{6}'.format(period,len(mjd1),len(mjd2),
-                                                                                       fltr1,fltr2,
-                                                                                       '{:.3f}'.format(median_cad1),
-                                                                                       '{:.3f}'.format(median_cad2)))
+        print('Obs {0}, {3}+{4}, {1}+{2} filtered datapts, med cadence {5}+{6} (filtered sig_level={7})'.format(period,len(mjd1),len(mjd2),
+                                                                                                               fltr1,fltr2,
+                                                                                                               '{:.3f}'.format(median_cad1),
+                                                                                                               '{:.3f}'.format(median_cad2),params["sig_level"]))
         if (Utils.check_file(centroidfile) == True) and (overwrite == False):
             print('Not running period {} {} vs {} calibration, file exists: {}'.format(period,fltr1,fltr2,centroidfile))
             continue
