@@ -65,7 +65,10 @@ Available functions are {}".format(','.join([xx for xx in FUNCTION_MAPPING.keys(
         period_chunks = []
         for pp in range(0,len(periods),2):
             if pp == len(periods) - 1:
-                period_chunks[-1].append(periods[pp])
+                if len(period_chunks) == 0:
+                    period_chunks.append([periods[pp]])
+                else:
+                    period_chunks[-1].append(periods[pp])
             else:
                 period_chunks.append([periods[pp],periods[pp+1]])
         old_period_map = model.config().observation_params()['periods']
