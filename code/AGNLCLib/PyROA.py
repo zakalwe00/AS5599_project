@@ -98,8 +98,6 @@ def InterCalibrateFilt(model,fltr,overwrite=False):
     if override_sig_level and fltr in override_sig_level:
         print('Override sig_level={} for {} to {}'.format(sig_level,fltr,override_sig_level[fltr]))
         sig_level = override_sig_level[fltr]
-    # sigma level to remove from ccf calculation
-    ccf_sig_level = model.config().ccf_params()['sig_level']
 
     if Utils.check_file(output_file) == True and overwrite==False:
         print('Not running filter {} calibration, file exists: {}'.format(fltr, output_file))
@@ -211,38 +209,32 @@ def InterCalibrateFilt(model,fltr,overwrite=False):
         interpmodel = interp(mjd)
                 
         #Sigma Clipping
-        mask = (abs(interpmodel - flux) < sig_level*err)
+        clipped = (abs(interpmodel - flux) > sig_level*err)
 
         #Shift by parameters
         flux = (flux - B)/A          
 
-        no_clipped = 0.0
-        for j in range(len(mask)):
-            if (mask[j]==False):
-                no_clipped = no_clipped + 1
-        print(no_clipped, "clipped, out of ", len(mjd), "data points")
+        print(np.sum(clipped), "clipped, out of ", len(mjd), "data points")
         
         #Add shifted data to merged lightcurve        
         for j in range(len(mjd)):
             Calibrated_mjd.append(mjd[j])
             Calibrated_flux.append(flux[j])
-            # Remove points at some ccf clip sigma level
-            # so that we can filter outliers in PyCCF
-            if (abs(interpmodel[j] - flux[j]) > ccf_sig_level*err[j]):
-                CCF_clip.append(True)
-            else:
-                CCF_clip.append(False)
-            
+
             if (abs(interpmodel[j] - flux[j]) > sig_level*err[j]):
                 Calibrated_err.append((abs(interpmodel[j] - flux[j])/sig_level))
             else:
                 Calibrated_err.append(err[j])
+            # add clip flag so we can appropriately
+            # filter points in CCF function
+            CCF_clip.append(clipped[j])
                 
     Calibrated_mjd = np.array(Calibrated_mjd)
     Calibrated_flux = np.array(Calibrated_flux)
     Calibrated_err = np.array(Calibrated_err)
     CCF_clip = np.array(CCF_clip)
-                
+
+    print('Filter {}: {:5.2f}% are clipped at sig_level={}'.format(fltr,100.0*float(np.sum(CCF_clip))/float(len(CCF_clip)),sig_level))
     print("<A> = ", np.mean(A_values))
     print("<B> = ", np.mean(B_values))
     

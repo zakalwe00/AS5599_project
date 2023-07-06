@@ -21,7 +21,9 @@ def PyCCF(model,fltr1,fltr2,overwrite=False):
     config = model.config()
     params = config.ccf_params()
     params.update(config.observation_params())
-    
+
+    sig_level = config.calibration_params()['sig_level']
+
     ########################################
     ###Read in light curvedata
     ########################################    
@@ -77,7 +79,7 @@ def PyCCF(model,fltr1,fltr2,overwrite=False):
         print('Obs {0}, {3}+{4}, {1}+{2} filtered datapts, med cadence {5}+{6} (filtered sig_level={7})'.format(period,len(mjd1),len(mjd2),
                                                                                                                fltr1,fltr2,
                                                                                                                '{:.3f}'.format(median_cad1),
-                                                                                                               '{:.3f}'.format(median_cad2),params["sig_level"]))
+                                                                                                               '{:.3f}'.format(median_cad2),sig_level))
         if (Utils.check_file(centroidfile) == True) and (overwrite == False):
             print('Not running period {} {} vs {} calibration, file exists: {}'.format(period,fltr1,fltr2,centroidfile))
             continue

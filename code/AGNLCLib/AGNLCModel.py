@@ -7,7 +7,7 @@ from . import Utils
 # but does not manipulate data or create directories
 class AGNLCModelConfig():
         
-    def __init__(self, PROJECTDIR, CONFIGDIR, agn_name):
+    def __init__(self, PROJECTDIR, CONFIGDIR, agn_name, output_ext=None):
 
         if Utils.check_dir(PROJECTDIR) == False:
             raise Exception('Unable to configure AGN lightcurve model, PROJECTDIR={} does not exist'.format(PROJECTDIR))
@@ -55,6 +55,8 @@ class AGNLCModelConfig():
         self._agn_name = agn_name
         self._root_dir = '{}/{}'.format(PROJECTDIR,agn_name)
         self._output_dir = '{}/{}/output'.format(PROJECTDIR,agn_name)
+        if output_ext is not None:
+            self._output_dir = '{}.{}'.format(self._output_dir,output_ext)
 
         # may want to override these arrays in the config
         self._fltrs       = []
@@ -106,8 +108,8 @@ class AGNLCModelConfig():
 # Model holds configuration parameters and runs lightcurve analysis functions
 class AGNLCModel():
     
-    def __init__(self, PROJECTDIR, CONFIGDIR, agn_name, noprint=True):
-        self._config = AGNLCModelConfig(PROJECTDIR, CONFIGDIR, agn_name)
+    def __init__(self, PROJECTDIR, CONFIGDIR, agn_name, noprint=True, output_ext=None):
+        self._config = AGNLCModelConfig(PROJECTDIR, CONFIGDIR, agn_name, output_ext=output_ext)
         
         Utils.check_and_create_dir(self.config().output_dir())
         
