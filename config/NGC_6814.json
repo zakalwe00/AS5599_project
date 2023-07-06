@@ -10,15 +10,9 @@
 	}
     },
     "calibration": {
-	"calib_fltr_order": ["g","u"],
-	"override_sig_level": { "z": 3.0,
-				"i": 3.0 }
+	"calib_fltr_order": ["u","B","g","V","r","i","z"]
     },
     "ROA": {
-	"delay_ref":"g",
-	"exclude_fltrs": ["i","z"],
-	"Nsamples": 25000,
-        "Nburnin": 20000,
 	"init_tau": {
 	    "g": 0.0,
 	    "B": -0.05,
