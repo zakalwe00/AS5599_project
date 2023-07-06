@@ -14,7 +14,7 @@
         ],
         "init_delta": 1.0,
 	"exclude_fltrs": [],
-        "sig_level": 4.0,
+        "sig_level": 3.0,
         "Nsamples": 25000,
         "Nburnin": 20000,
 	"Nparallel": 24
@@ -22,7 +22,6 @@
     "CCF": {
 	"MC_Iterations": 20000,
 	"Centroid_Threshold": 0.8,
-	"sig_level": 6.0,
         "lag_range": [
             -15.0,
             15.0
@@ -31,10 +30,10 @@
     "ROA": {
 	"A_prior": [0.5,2.0],
 	"B_prior": [0.5,2.0],
-	"tau_prior": [-15.0,15.0],
-	"delta_prior": [0.01,10.0],
+	"tau_prior": [-5.0,5.0],
+	"delta_prior": [0.5,10.0],
 	"v_prior": [0.0, 10.0],
-	"delay_ref":"g",
+	"delay_ref":"u",
 	"init_delta":1.0,
 	"exclude_fltrs": [],
 	"model": "Model1",
@@ -42,8 +41,8 @@
 	"sig_level": 4.0,
 	"use_backend": false,
 	"resume_progress": false,
-	"Nsamples": 25000,
-        "Nburnin": 20000,
+	"Nsamples": 35000,
+        "Nburnin": 30000,
 	"Nparallel": 24
     },
     "ROA_Model1": {
