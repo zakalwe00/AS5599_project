@@ -352,7 +352,7 @@ def InterCalibratePlot(model,fltr,select='A',corner_plot=True,overwrite=False,ma
     # references for convenience
     config = model.config()
     calib_params = config.calibration_params()
-    ccf_sig_level = model.config().ccf_params()['sig_level']
+    sig_level = calib_params['sig_level']
     
     # set up scopes to be used for calibration
     scopes = config.scopes()
@@ -429,7 +429,7 @@ def InterCalibratePlot(model,fltr,select='A',corner_plot=True,overwrite=False,ma
             ax1.errorbar(mjd_calib_clipped, flux_calib_clipped, yerr=err_calib_clipped,
                          ls='none', marker=".",
                          color="black",
-                         label="Sigma\nclipped\nvalues\nremoved\n(level={})".format(ccf_sig_level))
+                         label="Sigma\nclipped\nvalues\nremoved\n(level={})".format(sig_level))
         else:
             ax1.errorbar(mjd_calib, flux_calib, yerr=err_calib,
                          ls='none', marker=".",
