@@ -4,8 +4,9 @@
         "MAX_FLUX_ERR": 100.0
     },
     "calibration": {
+	"calib_fltr_order": ["u","B","g","V","r","i","z"],
         "delta_prior": [
-            0.01,
+            0.1,
             10.0
         ],
         "sigma_prior": [
