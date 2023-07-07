@@ -41,10 +41,10 @@ then
 	fi
 	for select in sig A B
 	do
-	    echo "Running $LAUNCH_SCRIPT $AGN calibrate_filt_plot:$fltr,$select 2>&1|cat > $LOG_DIR/calibrate_filt_plot_$fltr_$select.log"
+	    echo "Running $LAUNCH_SCRIPT $AGN calibrate_filt_plot:$fltr,$select 2>&1|cat > $LOG_DIR/calibrate_filt_plot_$fltr$select.log"
 	    if [ $DRYRUN -ne 1 ]
 	    then
-		$LAUNCH_SCRIPT $AGN calibrate_filt_plot:$fltr,$select 2>&1|cat > "$LOG_DIR/calibrate_filt_plot_$fltr_$select.log"
+		$LAUNCH_SCRIPT $AGN calibrate_filt_plot:$fltr,$select 2>&1|cat > "$LOG_DIR/calibrate_filt_plot_$fltr$select.log"
 	    fi
 	done
     done
