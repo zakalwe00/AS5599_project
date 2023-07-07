@@ -9,9 +9,6 @@
 	    }
 	}
     },
-    "calibration": {
-	"calib_fltr_order": ["u","B","g","V","r","i","z"]
-    },
     "ROA": {
 	"init_tau": {
 	    "g": 0.0,

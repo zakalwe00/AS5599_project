@@ -7,7 +7,6 @@
 	}
     },
     "calibration": {
-	"constrain_dates": [59700,60050],
-	"calib_fltr_order": ["g","i","B"]
+	"constrain_dates": [59700,60050]
     }
 }
