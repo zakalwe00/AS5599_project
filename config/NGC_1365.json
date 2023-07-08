@@ -7,6 +7,7 @@
 	}
     },
     "calibration": {
+	"exclude_scopes": [ "1m009" ],
 	"constrain_dates": [59700,60050]
     }
 }

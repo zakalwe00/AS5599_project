@@ -4,7 +4,10 @@ import pandas as pd
 import numpy as np
 import AGNLCLib
 import matplotlib
-if sys.stdout.isatty() is False:
+is_turgon = socket.gethostname() == 'turgon'
+# Dont try to show graphs unless a terminal is attached and
+# we're on a n appropriate server
+if (sys.stdout.isatty() is False) or (is_turgon is False):
     matplotlib.use('Agg')
 
 
