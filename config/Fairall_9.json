@@ -20,7 +20,7 @@
     },
     "calibration": {
 	"constrain_dates": [58270,60004],
-        "Nsamples": 35000,
-        "Nburnin": 30000
+        "Nsamples": 45000,
+        "Nburnin": 40000
     }
 }
