@@ -353,6 +353,7 @@ def InterCalibratePlot(model,fltr,select='A',corner_plot=True,overwrite=False,ma
     config = model.config()
     calib_params = config.calibration_params()
     sig_level = calib_params['sig_level']
+    constrain_dates = calib_params.get("constrain_dates",None)
     
     # set up scopes to be used for calibration
     scopes = config.scopes()
@@ -368,8 +369,14 @@ def InterCalibratePlot(model,fltr,select='A',corner_plot=True,overwrite=False,ma
     for scope in scopes:
         scope_file = '{}/{}_{}_{}.dat'.format(config.output_dir(),config.agn_name(),fltr,scope)
         #Check if file is empty
-        data.append(np.loadtxt(scope_file))
-        scopes_array.append([scope]*np.loadtxt(scope_file).shape[0])
+        dd = np.loadtxt(scope_file)
+        if constrain_dates is not None:
+            dd = dd[np.logical_and(dd[:,0] >= constrain_dates[0],dd[:,0] <= constrain_dates[1]),:]
+        if dd.shape[0] != 0:
+            data.append(dd)
+            scopes_array.append([scope]*np.loadtxt(scope_file).shape[0])
+        else:
+            data.append(None)
             
     scopes_array = [item for sublist in scopes_array for item in sublist]
     
@@ -407,11 +414,12 @@ def InterCalibratePlot(model,fltr,select='A',corner_plot=True,overwrite=False,ma
         ax0 = plt.subplot(gs[axs_idx])
         mjd_range = period_to_mjd_range[period]['mjd_range']
         for j in range(len(data)):
-            mask = np.logical_and(data[j][:,0] >= mjd_range[0],data[j][:,0] <= mjd_range[1])
-            mjd = data[j][mask,0]
-            flux = data[j][mask,1]
-            err = data[j][mask,2]
-            ax0.errorbar(mjd, flux, yerr=err, ls='none', marker=".", label=str(scopes[j]))
+            if data[j] is not None:
+                mask = np.logical_and(data[j][:,0] >= mjd_range[0],data[j][:,0] <= mjd_range[1])
+                mjd = data[j][mask,0]
+                flux = data[j][mask,1]
+                err = data[j][mask,2]
+                ax0.errorbar(mjd, flux, yerr=err, ls='none', marker=".", label=str(scopes[j]))
         # filter and remove clipped datapoints from the calibrated lightcurve
         mask = np.logical_and(df[0] >= mjd_range[0],df[0] <= mjd_range[1])
         err_mask = np.logical_and(df[7] == False,mask)
@@ -480,14 +488,16 @@ def InterCalibratePlot(model,fltr,select='A',corner_plot=True,overwrite=False,ma
         if select == 'B': shifter = 1
         if select == 'sig': shifter = 2
         for i in range(len(data)):
-            var = np.percentile(samples_chunks[i][shifter], [16, 50, 84])[1]
-            params.append([var])
+            if data[i] is not None:
+                var = np.percentile(samples_chunks[i][shifter], [16, 50, 84])[1]
+                params.append([var])
 
         params = list(chain.from_iterable(params))#Flatten into single array
 
         list_only = []
         for i in range(len(data)):
-            list_only.append(i*3+shifter)
+            if data[i] is not None:
+                list_only.append(i*3+shifter)
 
         print(list_only)
         print(np.array(labels)[list_only])
@@ -497,10 +507,11 @@ def InterCalibratePlot(model,fltr,select='A',corner_plot=True,overwrite=False,ma
     elif select == 'all':
         # A, B, sigma per scope
         for i in range(len(data)):
-            A = np.percentile(samples_chunks[i][0], [16, 50, 84])[1]
-            B = np.percentile(samples_chunks[i][1], [16, 50, 84])[1]
-            sig = np.percentile(samples_chunks[i][2], [16, 50, 84])[1]
-            params.append([A, B, sig])
+            if data[i] is not None:
+                A = np.percentile(samples_chunks[i][0], [16, 50, 84])[1]
+                B = np.percentile(samples_chunks[i][1], [16, 50, 84])[1]
+                sig = np.percentile(samples_chunks[i][2], [16, 50, 84])[1]
+                params.append([A, B, sig])
 
         # Delta
         params.append([np.percentile(samples_chunks[-1], [16, 50, 84])[1]])

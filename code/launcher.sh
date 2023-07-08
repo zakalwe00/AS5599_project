@@ -48,11 +48,14 @@ then
 	    fi
 	done
     done
-    echo "Running $LAUNCH_SCRIPT $AGN calibrate_plot 2>&1|cat > $LOG_DIR/calibrate_plot.log"
-    if [ $DRYRUN -ne 1 ]
-    then
-	$LAUNCH_SCRIPT $AGN calibrate_plot 2>&1|cat > "$LOG_DIR/calibrate_plot.log"
-    fi
+    for period in $PERIODS
+    do
+	echo "Running $LAUNCH_SCRIPT $AGN calibrate_plot:$period 2>&1|cat > $LOG_DIR/calibrate_plot_$period.log"
+	if [ $DRYRUN -ne 1 ]
+	then
+	    $LAUNCH_SCRIPT $AGN calibrate_plot:$period 2>&1|cat > "$LOG_DIR/calibrate_plot_$period.log"
+	fi
+    done
 fi
 
 if [ $CCF -eq 1 ]
