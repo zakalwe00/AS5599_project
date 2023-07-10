@@ -1,12 +1,6 @@
 {
     "observation": {
         "periods": {
-	    "Jun18-Feb19": {
-		"mjd_range": [58270,58543]
-	    },
-	    "May19-Feb20": {
-		"mjd_range": [58604,58909]
-	    },
 	    "May20-Feb21": {
 		"mjd_range": [58970,59274]
 	    },
@@ -19,8 +13,8 @@
 	}
     },
     "calibration": {
-	"constrain_dates": [58270,60004],
-        "Nsamples": 45000,
-        "Nburnin": 40000
+	"constrain_dates": [58960,60004],
+        "Nsamples": 25000,
+        "Nburnin": 20000
     }
 }
