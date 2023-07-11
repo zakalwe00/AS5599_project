@@ -4,12 +4,22 @@
 	    "Aug22-Dec22": {
 		"mjd_range": [58792,59945]
 	    },
+	    "Sept22-Nov22": {
+		"mjd_range": [59820,59920]
+	    },
 	    "Mar23-Jun23": {
 		"mjd_range": [60004,60166]
 	    }
 	}
     },
+    "CCF": {
+        "lag_range": [
+            -8.0,
+            8.0
+        ]
+    },
     "ROA": {
+	"tau_prior": [-8.0,8.0],
 	"init_tau": {
 	    "u": 0.0,
 	    "B": 0.01,

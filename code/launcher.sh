@@ -29,6 +29,7 @@ echo "Writing parameters to $LOG_DIR/used_params.json"
 FLTRS=`$ARGS_SCRIPT $AGN fltrs`
 CALIB_FLTRS=`$ARGS_SCRIPT $AGN calib_fltrs`
 PERIODS=`$ARGS_SCRIPT $AGN periods`
+DELAY_REF=`$ARGS_SCRIPT $AGN delay_ref`
 if [ $CALIBRATE -eq 1 ]
 then
     echo "--CALIBRATION--"
@@ -39,7 +40,7 @@ then
 	then
 	    $LAUNCH_SCRIPT $AGN calibrate:$fltr 2>&1|cat > "$LOG_DIR/calibrate_$fltr.log"
 	fi
-	for select in sig A B
+	for select in sig A B all
 	do
 	    echo "Running $LAUNCH_SCRIPT $AGN calibrate_filt_plot:$fltr,$select 2>&1|cat > $LOG_DIR/calibrate_filt_plot_$fltr$select.log"
 	    if [ $DRYRUN -ne 1 ]
@@ -63,12 +64,12 @@ then
     echo "--CCF--"
     for fltr in $FLTRS
     do
-	if [[ $fltr != 'g' ]]
+	if [[ $fltr != $DELAY_REF ]]
 	then
-	    echo "Running $LAUNCH_SCRIPT $AGN ccf:g,$fltr 2>&1|cat > $LOG_DIR/ccf_g_$fltr.log"
+	    echo "Running $LAUNCH_SCRIPT $AGN ccf:$DELAY_REF,$fltr 2>&1|cat > $LOG_DIR/ccf_$fltr.log"
 	    if [ $DRYRUN -ne 1 ]
 	    then
-		$LAUNCH_SCRIPT $AGN ccf:g,$fltr 2>&1|cat > "$LOG_DIR/ccf_g_$fltr.log"
+		$LAUNCH_SCRIPT $AGN ccf:$DELAY_REF,$fltr 2>&1|cat > "$LOG_DIR/ccf_$fltr.log"
 	    fi
 	fi
     done

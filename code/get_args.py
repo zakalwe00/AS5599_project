@@ -27,6 +27,8 @@ if __name__ == "__main__":
         print(config.output_dir(),end='')
     elif args.arg == 'fltrs':
         print(' '.join(config.fltrs()),end='')
+    elif args.arg == 'delay_ref':
+        print('{}'.format(config.roa_params()['delay_ref']))
     elif args.arg == 'calib_fltrs':
         print(' '.join(config.calib_fltrs()),end='')
     elif args.arg == 'scopes':
