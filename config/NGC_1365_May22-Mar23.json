@@ -1,5 +1,6 @@
 {
     "observation": {
+	"AGN": "NGC_1365",
         "periods": {
 	    "May22-Mar23": {
 		"mjd_range": [59700,60050]
