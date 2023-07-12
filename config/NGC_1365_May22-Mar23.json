@@ -1,0 +1,24 @@
+{
+    "observation": {
+        "periods": {
+	    "May22-Mar23": {
+		"mjd_range": [59700,60050]
+	    }
+	}
+    },
+    "calibration": {
+	"constrain_dates": [59700,60050]
+    },
+    "ROA": {
+	"delay_ref":"g",
+	"init_tau": {
+	    "g": 0.0,
+	    "B": -0.4,
+	    "V": -0.2,
+	    "i": 0.3,
+	    "r": 0.2,
+	    "u": -0.5,
+	    "z": 0.5
+	}
+    }
+}
