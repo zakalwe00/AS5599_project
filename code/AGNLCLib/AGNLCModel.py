@@ -41,6 +41,8 @@ class AGNLCModelConfig():
                 if 'ROA' in object_params:
                     self._roa_params.update(object_params['ROA'])
 
+        self._agn_name = agn_name
+        self._agn = self._observation_params.get('AGN',agn_name)
         roa_model_name = self._roa_params['model']
         self._roa_params.update(params.get('ROA_{}'.format(roa_model_name)))
         if 'ROA_{}'.format(roa_model_name) in object_params:
@@ -52,7 +54,6 @@ class AGNLCModelConfig():
         if is_turgon and self._roa_params['Nparallel'] > 10:
             self._roa_params['Nparallel'] = int(float(self._roa_params['Nparallel'])/2.0)        
 
-        self._agn_name = agn_name
         self._root_dir = '{}/{}'.format(PROJECTDIR,agn_name)
         self._output_dir = '{}/{}/output'.format(PROJECTDIR,agn_name)
         if output_ext is not None:
@@ -65,10 +66,10 @@ class AGNLCModelConfig():
 
         
     def agn_name(self): return self._agn_name
+    def agn(self): return self._agn
     def root_dir(self): return self._root_dir
     def output_dir(self): return self._output_dir
-    def fltrs(self): return self._fltrs
-    def calib_fltrs(self): return self._calib_fltrs
+    def fltrs(self): return self._calib_fltrs
     def scopes(self): return self._scopes
     def data_params(self): return self._data_params
     def calibration_params(self): return self._calibration_params
@@ -115,7 +116,7 @@ class AGNLCModel():
         
         # Load local copy of Las Cumbres Observatory data sourced from AVA https://www.alymantara.com/ava/
         # (if available for this AGN)
-        lco_lc_file = '{0}/{1}/LCO/AVA_{1}_lco.csv'.format(PROJECTDIR,agn_name)
+        lco_lc_file = '{0}/{1}/LCO/AVA_{1}_lco.csv'.format(PROJECTDIR,self.config().agn())
         if Utils.check_file(lco_lc_file) == False:
             raise Exception('LCO lightcurve file {} does not exist for this AGN. Source this from https://www.alymantara.com/ava/'.format(lco_lc_file))
         #print('Found LCO lightcurve file {}'.format(lco_lc_file))

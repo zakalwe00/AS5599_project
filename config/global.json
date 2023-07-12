@@ -6,7 +6,7 @@
     "calibration": {
 	"calib_fltr_order": ["u","B","g","V","r","i","z"],
         "delta_prior": [
-            0.1,
+            0.3,
             10.0
         ],
         "sigma_prior": [
@@ -39,7 +39,7 @@
 	"exclude_fltrs": [],
 	"model": "Model1",
 	"calc_P": false,
-	"sig_level": 4.0,
+	"sig_level": 3.0,
 	"use_backend": false,
 	"resume_progress": false,
 	"Nsamples": 35000,

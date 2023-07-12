@@ -1,13 +1,14 @@
 {
     "observation": {
+	"AGN": "NGC_6814",
         "periods": {
 	    "Aug22-Dec22": {
 		"mjd_range": [58792,59945]
-	    },
-	    "Mar23-Jun23": {
-		"mjd_range": [60004,60166]
 	    }
 	}
+    },
+    "calibration": {
+	"constrain_dates": [58792,59945]
     },
     "ROA": {
 	"init_tau": {

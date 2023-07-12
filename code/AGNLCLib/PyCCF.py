@@ -64,13 +64,18 @@ def PyCCF(model,fltr1,fltr2,overwrite=False):
 
         median_cad1 = Utils.median_cadence(mjd1)
         median_cad2 = Utils.median_cadence(mjd2)
-        print('Obs {0}, {3}+{4}, {1}+{2} unfiltered datapts, med cadence {5}+{6} (used for report)'.format(period,len(mjd1),len(mjd2),
-                                                                                                           fltr1,fltr2,
-                                                                                                           '{:.3f}'.format(median_cad1),
-                                                                                                           '{:.3f}'.format(median_cad2)))
+        print('Obs {0}, {3}+{4}, {1}+{2} unfiltered datapts, med cadence {5}+{6} (needed for reporting)'.format(period,len(mjd1),len(mjd2),
+                                                                                                                fltr1,fltr2,
+                                                                                                                '{:.3f}'.format(median_cad1),
+                                                                                                                '{:.3f}'.format(median_cad2)))
+        # remove all sigma clipped points
         fltr1_period = fltr1_period[fltr1_period[7] == False].loc[:,0:2]
         fltr2_period = fltr2_period[fltr2_period[7] == False].loc[:,0:2]
 
+        # remove all points with more than 3 times the median error
+        fltr1_period = Utils.filter_large_sigma(fltr1_period,3.0,fltr1)
+        fltr2_period = Utils.filter_large_sigma(fltr2_period,3.0,fltr2)
+        
         mjd1,flux1,err1 = [col for col in fltr1_period.T.to_numpy()]
         mjd2,flux2,err2 = [col for col in fltr2_period.T.to_numpy()]
 

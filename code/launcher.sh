@@ -27,13 +27,24 @@ echo "Running signal analysis for $AGN"
 echo "--LOGDIR--"
 echo "Writing parameters to $LOG_DIR/used_params.json"
 FLTRS=`$ARGS_SCRIPT $AGN fltrs`
-CALIB_FLTRS=`$ARGS_SCRIPT $AGN calib_fltrs`
 PERIODS=`$ARGS_SCRIPT $AGN periods`
 DELAY_REF=`$ARGS_SCRIPT $AGN delay_ref`
+if [ $RAW_PLOT -eq 1 ]
+then
+    for fltr in $FLTRS
+    do
+	echo "Running $LAUNCH_SCRIPT $AGN raw_plot:$fltr 2>&1|cat > $LOG_DIR/raw_plot_$fltr.log"
+	if [ $DRYRUN -ne 1 ]
+	then
+	    $LAUNCH_SCRIPT $AGN raw_plot:$fltr 2>&1|cat > "$LOG_DIR/raw_plot_$fltr.log"
+	fi
+    done
+fi
+
 if [ $CALIBRATE -eq 1 ]
 then
     echo "--CALIBRATION--"
-    for fltr in $CALIB_FLTRS
+    for fltr in $FLTRS
     do
 	echo "Running $LAUNCH_SCRIPT $AGN calibrate:$fltr 2>&1|cat > $LOG_DIR/calibrate_$fltr.log"
 	if [ $DRYRUN -ne 1 ]

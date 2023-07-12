@@ -1,0 +1,13 @@
+{
+    "observation": {
+	"AGN": "Fairall_9",
+        "periods": {
+	    "May19-Feb20": {
+		"mjd_range": [58604,58909]
+	    }
+	}
+    },
+    "calibration": {
+	"constrain_dates": [58604,58909]
+    }
+}

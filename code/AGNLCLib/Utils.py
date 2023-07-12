@@ -127,6 +127,40 @@ def RunningOptimalAverage(t_data, Flux, Flux_err, delta):
         
     return t[0:int(gridsize)], model, errs
 
+def WindowDensity(MJD_data, ERR_data, delta=None):
+    #Inputs
+    # MJD : Array of MJD corresponding to datapoints
+    # delta: width of rolling winw used
+    #Outputs
+    # density : sum of point weights in rolling window
+    if delta is None:
+        delta = median_cadence(MJD_data)
+    gridsize=1000
+    
+    mx=max(MJD_data)
+    mn=min(MJD_data)
+    length = abs(mx-mn)
+    mjd = np.arange(mn, mx, length/(gridsize))
+    density = np.zeros(len(mjd),dtype=np.float64)
+    
+    for j in prange(len(mjd)):
+
+        #Only include significant data points
+        data_pick = np.where(np.absolute(mjd[j]-MJD_data) < 5.0*delta)[0]
+        MJD_data_use = MJD_data[data_pick]
+        ERR_data_use = ERR_data[data_pick]
+        
+        if (len(data_pick)<1):
+            #Gaussian Memory Function (used in RunningOptimalAverage)
+            w =  np.exp(-0.5*(((mjd[j]-MJD_data)/delta)**2))/(ERR_data**2)
+        else:
+            #Define Gaussian Memory Function
+            w =np.exp(-0.5*(((mjd[j]-MJD_data_use)/delta)**2))/(ERR_data_use**2)
+
+        density[j] = np.nansum(w)
+        
+    return mjd[0:int(gridsize)], density[0:int(gridsize)]
+
 @jit(nopython=True, cache=True, parallel=True)
 def CalculateP(t_data, Flux, Flux_err, delta):
     Ps = np.empty(len(t_data))
@@ -701,9 +735,9 @@ def log_probability(params, data, priors, add_var, size, sig_level, include_slow
 # Maths Operations                     #
 ########################################
 
-def signal_to_noise(df, sig_level, fltr):
+def signal_to_noise(df, sig_level, fltr, noprint=True):
     # remove point with very large error
-    filter_large_sigma(df, sig_level, fltr, noprint=True)
+    filter_large_sigma(df, sig_level, fltr, noprint=noprint)
     flux = df.loc[:,1]
     err = df.loc[:,2]
     goodvals = df.loc[:,2] != 0.0
@@ -715,12 +749,18 @@ def signal_to_noise(df, sig_level, fltr):
     #Calculate SNR as RMS of LC to the mean err of the flux
     
     #Normalise lightcurve
+    m_mean = np.mean(m)
+    m_rms = np.std(m)
+    m = (m-m_mean)/m_rms
+    err = err/m_rms
+
+    #Calculate SNR
     m_rms = np.sqrt(np.mean(m**2))
     err_mean = np.mean(err)
-    
     snr = np.mean(m_rms/err_mean)
-    
-    print('Calculated mean SNR={:.3f} for filter {} based on {} observations'.format(snr,fltr,numgood))
+
+    if noprint == False:
+        print('Calculated mean SNR={:.3f} for filter {} based on {} observations'.format(snr,fltr,numgood))
     return snr
     
 
@@ -776,31 +816,19 @@ def filter_large_sigma(df, sig_level, fltr, noprint=False):
     median_err = np.median(df.loc[:,2])
     goodvals = df.loc[:,2] < median_err * sig_level
     badvals = np.logical_not(goodvals)
-    if np.sum(badvals) and noprint is False:
+    if np.sum(badvals) and noprint == False:
         print('Filtered band {} {} (sig_level={})'.format(fltr,df.loc[badvals,1].to_numpy(),sig_level))
     return df[goodvals]
-    
-def filter_large_sigma_jumps(df, jump_sig_level, fltr):
-    delta1 = np.diff(df.loc[:,2])
-    delta1_shift = delta1[1:]
-    delta1 = delta1[:-1]
-    delta1_limit = np.std(delta1)*jump_sig_level
-    # both sides of the datapoint have large sigma flux jumps
-    badvals = np.logical_and(np.abs(delta1) > delta1_limit,
-                             np.abs(delta1_shift) > delta1_limit)
-    # the jumps are in different directions
-    badvals = np.logical_and(delta1*delta1_shift < 0.0,badvals)
-    badvals = np.concatenate(([False],badvals,[False]))
-    goodvals = np.logical_not(badvals)
-    if np.sum(badvals):
-        print('Filtered band {} {} (jump_sig_level={})'.format(fltr,df.loc[badvals,1].to_numpy(),jump_sig_level))
-    return df[goodvals]
+
+def potential_outliers(flux,sigma_limit=3.0):
+    median_flux = np.median(flux)
+    return flux > (median_flux + np.std(flux)*sigma_limit)
 
 # Take and array of observation times and estimate the median cadance,
 # rejecting any observations less than 2.5 hours apart (default setting) as these are
 # likely to be part of the same observing run
 def median_cadence(mjds, min_sep=2.5):
-    min_sep_day_frac = 2.5/24.0
+    min_sep_day_frac = min_sep/24.0
     diffs = mjds[1:] - mjds[:-1]
     diffs = diffs[diffs > min_sep_day_frac]
     med_cad = np.median(diffs)
@@ -856,7 +884,7 @@ def write_scope_filter_data(config,obs_file,noprint=True):
             bad_values_flux = np.logical_or(obs_fltr['Flux'] > MAX_FLUX,
                                             obs_fltr['Flux'] <= 0.0)
             if np.sum(bad_values_flux):
-                if noprint is False:
+                if noprint == False:
                     print('Throw out bad observations for filter {}:\n{}'.format(fltr,obs_fltr[bad_values_flux]))
                 obs_fltr = obs_fltr[bad_values_flux==False]
 
@@ -864,7 +892,7 @@ def write_scope_filter_data(config,obs_file,noprint=True):
             bad_values_err = np.logical_or(obs_fltr['Error'] > MAX_FLUX_ERR,
                                            obs_fltr['Error'] <= 0.0)
             if np.sum(bad_values_err):
-                if noprint is False:
+                if noprint == False:
                     print('Throw out bad error estimates for filter {}:\n{}'.format(fltr,obs_fltr[bad_values_err]))
                 obs_fltr = obs_fltr[bad_values_err==False]
 
@@ -879,7 +907,7 @@ def write_scope_filter_data(config,obs_file,noprint=True):
                 
                 bad_values_outlier = np.logical_and(mask,np.logical_or(flux_mean_diff > flux_std_limit,flux_mean_diff < -MAX_SIGMA))
                 if np.sum(bad_values_outlier):
-                    if noprint is False:
+                    if noprint  == False:
                         print('Throw out bad values ({}-sigma fluxes) for filter {} period {}:\n{}'.format(MAX_SIGMA,fltr,period,
                                                                                                            obs_fltr[bad_values_outlier]))
                     obs_fltr = obs_fltr[bad_values_outlier==False]

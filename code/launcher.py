@@ -10,7 +10,6 @@ is_turgon = socket.gethostname() == 'turgon'
 if (sys.stdout.isatty() is False) or (is_turgon is False):
     matplotlib.use('Agg')
 
-
 # setup global variables for use in the data pipeline (these can be overridden in environment)
 HOMEDIR = os.environ['HOME']
 TESTEXT = os.environ.get('TESTEXT','')
@@ -23,6 +22,7 @@ AGN_NAMES = [ agn.name for agn in os.scandir(PROJECTDIR) if agn.is_dir()
               and agn.name not in ['code','config'] and agn.name[0] != '.']
 
 FUNCTION_MAPPING = {
+    'raw_plot': AGNLCLib.ScopeRawPlot,
     # PyROA functions adapted from https://github.com/FergusDonnan/PyROA
     'calibrate': AGNLCLib.InterCalibrateFilt,
     'calibrate_filt_plot': AGNLCLib.InterCalibratePlot, # Corner plot, LC plot by filter
@@ -34,7 +34,6 @@ FUNCTION_MAPPING = {
     'roa_chains_plot': AGNLCLib.ChainsPlot,
     'roa_corner_plot': AGNLCLib.CornerPlot }
 
-is_turgon = socket.gethostname() == 'turgon'
 # Uses PYCCF code adapted from https://bitbucket.org/cgrier/python_ccf_code/src/master/
 # installed on turgon but not AWS
 if is_turgon:
@@ -63,7 +62,7 @@ Available functions are {}".format(','.join([xx for xx in FUNCTION_MAPPING.keys(
     model = AGNLCLib.AGNLCModel(PROJECTDIR,CONFIGDIR,args.agn)
 
     # run the filter plot for short sets of periods
-    if fargs[0] == 'calibrate_filt_plot':
+    if fargs[0] in ['raw_plot','calibrate_filt_plot']:
         periods = [kk for kk in model.config().observation_params()['periods'].keys()]
         period_chunks = []
         for pp in range(0,len(periods),2):
