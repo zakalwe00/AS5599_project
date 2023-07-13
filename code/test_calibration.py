@@ -26,12 +26,11 @@ AGN_NAMES = [ agn.name for agn in os.scandir(PROJECTDIR) if agn.is_dir()
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("agn", type=str,
-                        help="AGN for analysis",
+                        help="AGN for light curve calibration",
                         choices=AGN_NAMES)
-    parser.add_argument('-r', '--raw-plot',
-                        action='store_true',
-                        help='Plot raw uncalibrated telescope data by \
-observing year')
+    parser.add_argument("fltr", type=str,
+                        help="Filter band for calibration",
+                        choices=["u","B","g","V","r","i","z","all"])
     parser.add_argument('-s', '--show-outliers',
                         action='store_true',
                         help='Create plot of calibration model showing \
@@ -48,36 +47,19 @@ included  by default)')
                         help='Extra output logging for calculations \
 such as number of values removed by clipping')
     args=parser.parse_args()
-    
+
+    if args.fltr == 'all':
+        args.fltr = None
     noprint=np.logical_not(args.verbose)
     # Create lightcurve model for this AGN
     model = AGNLCLib.AGNLCModel(PROJECTDIR,CONFIGDIR,args.agn)
     periods = [kk for kk in model.config().observation_params()['periods'].keys()]
     
-    if args.raw_plot:
-        # run the raw filter plot for short sets of periods if necessary
-        period_chunks = []
-        for pp in range(0,len(periods),2):
-            if pp == len(periods) - 1:
-                if len(period_chunks) == 0:
-                    period_chunks.append([periods[pp]])
-                else:
-                    period_chunks[-1].append(periods[pp])
-            else:
-                period_chunks.append([periods[pp],periods[pp+1]])
-        old_period_map = model.config().observation_params()['periods']
-        for pc in period_chunks:
-            new_period_map = {}
-            for ppc in pc:
-                new_period_map[ppc] = old_period_map[ppc]
-            model.config().observation_params()['periods'] = new_period_map
-            AGNLCLib.ScopeRawPlot(model,noprint=noprint)
-        model.config().observation_params()['periods'] = old_period_map
-
     if args.show_outliers:
         for pp in periods:
-            AGNLCLib.CalibrationPlot(model,pp,add_model=True,overwrite=True,noprint=noprint)
+            AGNLCLib.CalibrationOutlierPlot(model,pp,fltr=args.fltr,add_model=True,
+                                     overwrite=True,noprint=noprint,delta=args.delta)
 
     if args.no_snr is False:
         for pp in periods:
-            AGNLCLib.CalibrationSNR(model,pp,noprint=noprint)
+            AGNLCLib.CalibrationSNR(model,pp,fltr=args.fltr,noprint=noprint)

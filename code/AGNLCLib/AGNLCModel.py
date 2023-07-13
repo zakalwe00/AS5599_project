@@ -124,6 +124,18 @@ class AGNLCModel():
         # Load data (perform basic sanity check, record available filters and scopes)
         Utils.write_scope_filter_data(self.config(),lco_lc_file,noprint=noprint)
 
+
+    def remove_fltr_outliers(self,fltr,remove_outliers,noprint=False):
+        lco_lc_file = '{}/LCO/AVA_{}_lco.csv'.format(self.config().root_dir(),self.config().agn())
+        if Utils.check_file(lco_lc_file) == False:
+            raise Exception('LCO lightcurve file {} does not exist for this AGN. Source this from https://www.alymantara.com/ava/'.format(lco_lc_file))
+        #print('Found LCO lightcurve file {}'.format(lco_lc_file))
+
+        # Write data to a new set of filter scope files with a tmp file extension
+        Utils.write_scope_filter_data(self.config(),lco_lc_file,noprint=noprint,fltr=fltr,
+                                      remove_outliers=remove_outliers,
+                                      ext='_{}'.format(datetime.datetime.now().strftime('%Y%m%d_%H%M%S')))
+    
     def config(self): return self._config
 
 

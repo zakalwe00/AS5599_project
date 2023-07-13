@@ -6,7 +6,7 @@ from .AGNLCModel import AGNLCModelConfig,AGNLCModel
 
 from .PyROA import InterCalibrateFilt,Fit
 
-from .PyROA_Plot import InterCalibratePlot,CalibrationSNR,CalibrationPlot,FitPlot,ConvergencePlot,ChainsPlot,CornerPlot,ScopeRawPlot
+from .PyROA_Plot import InterCalibratePlot,CalibrationSNR,CalibrationOutlierPlot,FitPlot,ConvergencePlot,ChainsPlot,CornerPlot,ScopeRawPlot
 
 import socket
 is_turgon = socket.gethostname() == 'turgon'

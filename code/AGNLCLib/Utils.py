@@ -862,24 +862,39 @@ def check_and_create_dir(cdir,noprint=True):
         os.makedirs(cdir)
     return
 
-def write_scope_filter_data(config,obs_file,noprint=True):
+def write_scope_filter_data(config,obs_file,noprint=True,fltr=None,remove_outliers=None,ext=''):
     # split LCO file data for this AGN into records by telescope/filter (spectral band)
     obs = pd.read_csv(obs_file).sort_values('MJD')
     scopes = np.unique(obs.Tel)
     #print('Found telescope list {}'.format(','.join(scopes)))
     fltrs = np.unique(obs.Filter)
+    if fltr is not None:
+        fltrs = [fltr]
     #print('Found filter list {}'.format(','.join(fltrs)))
-
+    remove_outlier_flag = remove_outliers is not None and remove_outliers[0].shape[0] > 0
     params = config.data_params()
     MAX_FLUX = params.get('MAX_FLUX',None)
     MAX_FLUX_ERR = params.get('MAX_FLUX_ERR',None)
     MAX_SIGMA = params.get('MAX_SIGMA',None)
     periods_to_mjd = config.observation_params()['periods']
-    
+
+    outlier_scopes = []
     # prepare data file per telescope/filter if not already done
     for fltr in fltrs:
         obs_fltr = obs[obs['Filter'] == fltr]
         obs_fltr = obs_fltr.loc[:,['MJD','Flux','Error','Tel']]
+        if remove_outlier_flag:
+            remove_flag = obs_fltr['MJD'] == 0.0
+            for mjd in remove_outliers[0]:
+                outlier_remove = obs_fltr['MJD'] == mjd
+                if np.sum(outlier_remove) != 1:
+                    print('Did not match exactly one outlier for MJD={} fltr={}, check LCO file'.format(mjd,fltr))
+                remove_flag = np.logical_or(remove_flag,outlier_remove)
+                outlier_scopes = outlier_scopes + obs_fltr['Tel'][remove_flag].to_list()
+            if noprint == False:
+                print('Throw out {} calibration outliers for filter {}:\n{}'.format(np.sum(remove_flag),
+                                                                                    fltr,obs_fltr[remove_flag]))
+                obs_fltr = obs_fltr[remove_flag==False]
         if MAX_FLUX is not None:
             bad_values_flux = np.logical_or(obs_fltr['Flux'] > MAX_FLUX,
                                             obs_fltr['Flux'] <= 0.0)
@@ -912,13 +927,20 @@ def write_scope_filter_data(config,obs_file,noprint=True):
                                                                                                            obs_fltr[bad_values_outlier]))
                     obs_fltr = obs_fltr[bad_values_outlier==False]
 
+        outlier_scopes = np.unique(outlier_scopes)
+
         for scope in scopes:
-            output_fn = '{}/{}_{}_{}.dat'.format(config.output_dir(), config.agn_name(), fltr, scope)
-            if os.path.exists(output_fn) == False:
+            if remove_outlier_flag and scope not in outlier_scopes:
+                continue
+            output_fn = '{}/{}_{}_{}{}.dat'.format(config.output_dir(),config.agn_name(),fltr,scope,ext)
+            if os.path.exists(output_fn) == False or remove_outlier_flag:
                 # Select time/flux/error per scope and filter
                 obs_scope = obs_fltr[obs_fltr['Tel'] == scope].loc[:,['MJD','Flux','Error']]
                 obs_scope.to_csv(output_fn, sep=' ', index=False, header=False)
-    
+                if noprint  == False and remove_outlier_flag:
+                    output_fn_old = '{}/{}_{}_{}.dat'.format(config.output_dir(),config.agn_name(),fltr,scope)
+                    print ('mv {0} {0}.raw'.format(output_fn_old))
+                    print ('mv {} {}'.format(output_fn,output_fn_old))
     config.set_fltrs(fltrs)
     config.set_scopes(scopes)
 

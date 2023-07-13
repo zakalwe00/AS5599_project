@@ -25,9 +25,9 @@ FUNCTION_MAPPING = {
     'raw_plot': AGNLCLib.ScopeRawPlot,
     # PyROA functions adapted from https://github.com/FergusDonnan/PyROA
     'calibrate': AGNLCLib.InterCalibrateFilt,
-    'calibrate_filt_plot': AGNLCLib.InterCalibratePlot, # Corner plot, LC plot by filter
+    'calibrate_filt_plot': AGNLCLib.InterCalibratePlot,
     'calibrate_snr': AGNLCLib.CalibrationSNR,
-    'calibrate_plot': AGNLCLib.CalibrationPlot,
+    'calibrate_plot': AGNLCLib.CalibrationOutlierPlot,
     'roa': AGNLCLib.Fit,
     'roa_plot': AGNLCLib.FitPlot,
     'roa_conv_plot': AGNLCLib.ConvergencePlot,

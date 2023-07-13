@@ -488,10 +488,12 @@ def FitPlot(model,select_period,overwrite=False,noprint=True):
         plt.close()
 
 
-def CalibrationPlot(model,select_period,add_model=False,overwrite=False,noprint=True):
+def CalibrationOutlierPlot(model,select_period,fltr=None,add_model=False,overwrite=False,noprint=True,delta=None):
 
     config = model.config()
     fltrs = config.fltrs()
+    if fltr is not None:
+        fltrs = [fltr]
 
     period_to_mjd_range = config.observation_params()['periods']
     if select_period not in period_to_mjd_range:
@@ -512,24 +514,33 @@ def CalibrationPlot(model,select_period,add_model=False,overwrite=False,noprint=
         "figure.figsize":[18,7.5],
         "font.size": 14})
     fig, axs = plt.subplots(len(fltrs),sharex=True)
+    if len(fltrs) == 1:
+        axs_is_array=False
+    else:
+        axs_is_array=True
+    remove_outliers = []
     fig.suptitle('{} {} Calibrated light curves'.format(config.agn(),select_period))
-    for i,fltr in enumerate(fltrs):
-        calib_file = '{}/{}_{}.dat'.format(config.output_dir(),config.agn_name(),fltr)
-        df = pd.read_csv(calib_file,
-                         header=None,index_col=None,
-                         quoting=csv.QUOTE_NONE,
-                         delim_whitespace=True).sort_values(0)
+    for i,ff in enumerate(fltrs):
+        if axs_is_array:
+            axsi = axs[i]
+        else:
+            axsi = axs
+        calib_file = '{}/{}_{}.dat'.format(config.output_dir(),config.agn_name(),ff)
+        df_orig = pd.read_csv(calib_file,
+                              header=None,index_col=None,
+                              quoting=csv.QUOTE_NONE,
+                              delim_whitespace=True).sort_values(0)
         # Constrain to a single observation year
-        df = df[np.logical_and(df[0] >= mjd_range[0],
-                               df[0] <= mjd_range[1])]
+        df = df_orig[np.logical_and(df_orig[0] >= mjd_range[0],
+                                    df_orig[0] <= mjd_range[1])]
 
         if add_model:
-            filehandler = open('{}/{}_calib_model.obj'.format(config.output_dir(),fltr),"rb")
-            model = pickle.load(filehandler)
-            model_mask = np.logical_and(model[0] >= mjd_range[0],model[0] <= mjd_range[1])
-            model_mjd = model[0][model_mask]
-            model_flux = model[1][model_mask]
-            model_err = model[2][model_mask]
+            filehandler = open('{}/{}_calib_model.obj'.format(config.output_dir(),ff),"rb")
+            load_model = pickle.load(filehandler)
+            model_mask = np.logical_and(load_model[0] >= mjd_range[0],load_model[0] <= mjd_range[1])
+            model_mjd = load_model[0][model_mask]
+            model_flux = load_model[1][model_mask]
+            model_err = load_model[2][model_mask]
 
         # Flag large sigma residuals from the calibration model for display
         sigma_clipped = df[7] == True
@@ -537,32 +548,55 @@ def CalibrationPlot(model,select_period,add_model=False,overwrite=False,noprint=
         
         mjd = data[i][0]
         # X limits are three days either side of the calibrated datapoints
-        axs[i].set_xlim(np.min(mjd)-3,np.max(mjd)+3)
+        axsi.set_xlim(np.min(mjd)-3,np.max(mjd)+3)
+        axsi.set_xlim(np.min(mjd)-3,np.max(mjd)+3)
         flux = data[i][1]
         # Y limits are 5% either side of the calibrated flux
-        axs[i].set_ylim(np.min(flux)*0.95,np.max(flux)*1.05)
+        axsi.set_ylim(np.min(flux)*0.95,np.max(flux)*1.05)
         err = data[i][2]
         if add_model:
-            #Get point weight  density model based on the median cadence
-            density_model = Utils.WindowDensity(mjd.to_numpy(),err.to_numpy())
-            interp = interpolate.interp1d(density_model[0], density_model[1], kind="linear", fill_value="extrapolate")
-            density = interp(mjd)
+            #Here we find influential outliers on the basis that some will crop up in periods with low point density
+            #1) Get a blurred roa model using a 3 times Delta (if given) or 3x the median cadence window
+            if delta is None:
+                delta = Utils.median_cadence(mjd.to_numpy())
+            blurred_roa_model = Utils.RunningOptimalAverage(mjd.to_numpy(),flux.to_numpy(),err.to_numpy(),delta*8.0)
+            interp = interpolate.interp1d(blurred_roa_model[0], blurred_roa_model[1], kind="linear", fill_value="extrapolate")
+            blurred_flux = interp(mjd)
+            diff = np.abs(blurred_flux - flux)
+            #Normalise the difference
+            diff_mean = np.mean(diff)
+            diff_rms = np.std(diff)
+            diff = (diff - diff_mean)/diff_rms
+
+            # two-sigma differences between the calibrated flux and the blurred ROA
+            #potential_outlier = np.abs(diff) > 3.0
+            potential_outlier = flux - blurred_flux > 0.25 * blurred_flux
+            
+            #Get point weight  density model based on delta (if given) or the median cadence
+            density_model = Utils.WindowDensity(mjd.to_numpy(),err.to_numpy(),delta)
+            interp_density = interpolate.interp1d(density_model[0], density_model[1], kind="linear", fill_value="extrapolate")
+            density = interp_density(mjd)
             # normalise the density
             density_mean = np.mean(density)
             density_rms = np.std(density)
             density = (density - density_mean)/density_rms
-            #sigma clipped points OR potential outlier (lying > 2 sigma from median flux)
-            #in low density datapoint areas may by flagged for removal
-            prm = np.logical_and(mjd[density < -2.0],
-                                 Utils.potential_outliers(flux))
-        axs[i].errorbar(mjd, flux , yerr=err, ls='none', marker=".", ms=3.5, elinewidth=0.5,color="blue")
+            #potential outlier (a two-sigma difference from the blurred RunningOptimalAverage)
+            #in relatively low density datapoint areas may by flagged for removal
+            prm = np.logical_and(density < 0.5,potential_outlier)
+            remove_outliers = np.array([mjd[prm],flux[prm]])
+            if remove_outliers[0].shape[0] > 0:
+                print('Found influential outliers with calibrated flux 25% away blurred ROA flux (delta=8*{}):'.format(delta))
+                print(remove_outliers)
+                #save *.dat aside with outliers removed
+                model.remove_fltr_outliers(fltr,remove_outliers)
+        axsi.errorbar(mjd, flux , yerr=err, ls='none', marker=".", ms=3.5, elinewidth=0.5,color="blue")
         if add_model:
-            axs[i].errorbar(mjd[prm], flux[prm], yerr=err[prm], ls='none', marker=".", ms=3.5, elinewidth=0.5,color="red")
-        axs[i].set_ylabel('{} filter flux'.format(fltr))
+            axsi.errorbar(mjd[prm], flux[prm], yerr=err[prm], ls='none', marker=".", ms=3.5, elinewidth=0.5,color="red")
+        axsi.set_ylabel('{} filter flux'.format(ff))
         if add_model:
-            axs[i].plot(model_mjd, model_flux, color="grey", label="calibration_model", alpha=0.5)
-            axs[i].fill_between(model_mjd, model_flux+model_err, model_flux-model_err, alpha=0.5, color="grey")
-    axs[-1].set_xlabel('Time (days, MJD)')
+            axsi.plot(model_mjd, model_flux, color="grey", label="calibration_model", alpha=0.5)
+            axsi.fill_between(model_mjd, model_flux+model_err, model_flux-model_err, alpha=0.5, color="grey")
+    axsi.set_xlabel('Time (days, MJD)')
     if Utils.check_file(calib_curve_plot) == True and overwrite==False:
         print('Not writing Calibrated light curve plot, file exists: {}'.format(calib_curve_plot))
     else:
@@ -571,10 +605,10 @@ def CalibrationPlot(model,select_period,add_model=False,overwrite=False,noprint=
         plt.show()
     else:
         plt.close()
-
+                                   
     return
 
-def CalibrationSNR(model,select_period,overwrite=False,noprint=True):
+def CalibrationSNR(model,select_period,fltr=None,overwrite=False,noprint=True):
     print('Running PyROA CalibrationSNR')
 
     # references for convenience
@@ -587,8 +621,10 @@ def CalibrationSNR(model,select_period,overwrite=False,noprint=True):
     exclude_fltrs = roa_params["exclude_fltrs"]    
     fltrs = config.fltrs()
 
-    fltrs = [fltr for fltr in fltrs if fltr not in exclude_fltrs and fltr != delay_ref]    
+    fltrs = [ff for ff in fltrs if ff not in exclude_fltrs and ff != delay_ref]    
     fltrs = [delay_ref] + fltrs
+    if fltr is not None:
+        fltrs = [fltr]    
     
     add_ext = '_{}'.format(roa_params['model'])
     
@@ -602,8 +638,8 @@ def CalibrationSNR(model,select_period,overwrite=False,noprint=True):
     add_ext = add_ext + ' {}'.format(select_period)
 
     snr = []
-    for fltr in fltrs:
-        calib_file = '{}/{}_{}.dat'.format(config.output_dir(),config.agn_name(),fltr)
+    for ff in fltrs:
+        calib_file = '{}/{}_{}.dat'.format(config.output_dir(),config.agn_name(),ff)
     
         if Utils.check_file(calib_file,exit=True):
             # get mjd flux err from the calibration file as a numpy array of first three columns
@@ -616,10 +652,10 @@ def CalibrationSNR(model,select_period,overwrite=False,noprint=True):
             # Remove large sigma residuals from the calibration model
             df = df[df[7] == False].loc[:,0:2]
             # remove all points with more than 3 times the median error
-            df = Utils.filter_large_sigma(df,3.0,fltr,noprint=noprint)
-            snr.append(Utils.signal_to_noise(df,sig_level,fltr,noprint=noprint))
+            df = Utils.filter_large_sigma(df,3.0,ff,noprint=noprint)
+            snr.append(Utils.signal_to_noise(df,sig_level,ff,noprint=noprint))
 
-    ext = 'for AGN {} {}'.format(config.agn(),add_ext)
+    ext = 'for AGN {} {}'.format(config.agn(),select_period)
     print('Signal to Noise ratio by filter {}'.format(ext))
     print(tabulate([snr],headers=fltrs))
 
