@@ -7,6 +7,10 @@
 	}
     },
     "calibration": {
+	"delta_prior": [
+            1.0,
+            10.0
+        ],
 	"constrain_dates": [59700,60050],
 	"lag_range": [
             -2.0,
