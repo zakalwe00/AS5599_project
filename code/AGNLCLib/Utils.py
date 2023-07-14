@@ -828,8 +828,9 @@ def potential_outliers(flux,sigma_limit=3.0):
 # rejecting any observations less than 2.5 hours apart (default setting) as these are
 # likely to be part of the same observing run
 def median_cadence(mjds, min_sep=2.5):
+    mjds_sorted = np.sort(mjds)
     min_sep_day_frac = min_sep/24.0
-    diffs = mjds[1:] - mjds[:-1]
+    diffs = mjds_sorted[1:] - mjds_sorted[:-1]
     diffs = diffs[diffs > min_sep_day_frac]
     med_cad = np.median(diffs)
     print('Calculated median cadence={:5.2f} from {} epoch diffs'.format(med_cad,len(diffs)))

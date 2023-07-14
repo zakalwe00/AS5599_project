@@ -60,8 +60,10 @@ def InterCalibrateFilt(model,fltr,overwrite=False):
     labels = [None]*(3*len(data) + 1)
     pos_chunks = [pos[i:i + 3] for i in range(0, len(pos), 3)]
     labels_chunks = [labels[i:i + 3] for i in range(0, len(labels), 3)]
+    all_mjd = np.array([],dtype=np.float64)
     for i in range(len(data)):
         mjd = data[i][:,0]
+        all_mjd = np.append(all_mjd,mjd)
         flux = data[i][:,1]
         err = data[i][:,2]
                 
@@ -72,8 +74,20 @@ def InterCalibrateFilt(model,fltr,overwrite=False):
         labels_chunks[i][0] = "A"+str(i+1)
         labels_chunks[i][1] = "B"+str(i+1)        
         labels_chunks[i][2] = "\u03C3"+str(i+1)                
-        
-    pos_chunks[-1][0] = calib_params['init_delta']
+
+    med_cadence = Utils.median_cadence(all_mjd)
+    if calib_params['init_delta'] < med_cadence:
+        pos_chunks[-1][0] = med_cadence
+        print('Override init_delta={} from config to median cadence {}'.format(calib_params['init_delta'], med_cadence))
+    else:
+        pos_chunks[-1][0] = calib_params['init_delta']
+
+    if calib_params['delta_prior'][0] < med_cadence:
+        print('Override delta_prior[0]={} from config to median cadence {}'.format(calib_params['delta_prior'][0], med_cadence))
+        priors = [[med_cadence,calib_params['delta_prior'][1]], calib_params['sigma_prior']]
+    else:
+        priors = [calib_params['delta_prior'], calib_params['sigma_prior']]
+
     labels_chunks[-1][0] = "\u0394"
     #Store initial values for use in prior
     init_params_chunks = pos_chunks
@@ -108,7 +122,7 @@ def InterCalibrateFilt(model,fltr,overwrite=False):
         # Reduce memory usage -> 6 threads 2023/06/14 as turgon has very little memory(?)
         with Pool(calib_params['Nparallel']) as pool:
             sampler = emcee.EnsembleSampler(nwalkers, ndim, Utils.log_probability_calib, 
-                                            args=(data, [calib_params['delta_prior'], calib_params['sigma_prior']],
+                                            args=(data, priors,
                                                   sig_level, init_params_chunks), pool=pool)
             sampler.run_mcmc(pos, calib_params['Nsamples'], progress=True);
 
