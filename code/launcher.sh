@@ -51,7 +51,7 @@ then
 	then
 	    $LAUNCH_SCRIPT $AGN calibrate:$fltr 2>&1|cat > "$LOG_DIR/calibrate_$fltr.log"
 	fi
-	for select in sig A B all
+	for select in sig A B
 	do
 	    echo "Running $LAUNCH_SCRIPT $AGN calibrate_filt_plot:$fltr,$select 2>&1|cat > $LOG_DIR/calibrate_filt_plot_$fltr$select.log"
 	    if [ $DRYRUN -ne 1 ]
