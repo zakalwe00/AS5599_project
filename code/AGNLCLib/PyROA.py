@@ -76,17 +76,13 @@ def InterCalibrateFilt(model,fltr,overwrite=False):
         labels_chunks[i][2] = "\u03C3"+str(i+1)                
 
     med_cadence = Utils.median_cadence(all_mjd)
-    if calib_params['init_delta'] < med_cadence:
-        pos_chunks[-1][0] = med_cadence
-        print('Override init_delta={} from config to median cadence {}'.format(calib_params['init_delta'], med_cadence))
-    else:
-        pos_chunks[-1][0] = calib_params['init_delta']
+    init_delta = 4.0*med_cadence
+    delta_prior = [2.0*med_cadence,10.0*med_cadence]
+    print('Set init_delta={:5.4f} to 4x (median cadence = {:5.4f})'.format(init_delta, med_cadence))
+    print('Set delta_prior=[{:5.4f},{:5.4f}] to [[2x,10x] (median cadence = {:5.4f})'.format(delta_prior[0],delta_prior[1], med_cadence))
 
-    if calib_params['delta_prior'][0] < med_cadence:
-        print('Override delta_prior[0]={} from config to median cadence {}'.format(calib_params['delta_prior'][0], med_cadence))
-        priors = [[med_cadence,calib_params['delta_prior'][1]], calib_params['sigma_prior']]
-    else:
-        priors = [calib_params['delta_prior'], calib_params['sigma_prior']]
+    pos_chunks[-1][0] = init_delta
+    priors = [delta_prior, calib_params['sigma_prior']]
 
     labels_chunks[-1][0] = "\u0394"
     #Store initial values for use in prior

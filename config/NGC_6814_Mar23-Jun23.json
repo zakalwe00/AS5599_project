@@ -8,10 +8,6 @@
 	}
     },
     "calibration": {
-	"delta_prior": [
-            0.6,
-            10.0
-        ],
 	"constrain_dates": [60004,60166]
     },
     "ROA": {
