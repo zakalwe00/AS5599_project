@@ -496,9 +496,11 @@ def CalibrationOutlierPlot(model,select_period,fltr=None,add_model=False,overwri
 
     config = model.config()
     fltrs = config.fltrs()
+    fltr_ext = '_all'
     if fltr is not None:
         fltrs = [fltr]
-
+        fltr_ext = '_{}'.format(fltr)
+        
     period_to_mjd_range = config.observation_params()['periods']
     if select_period not in period_to_mjd_range:
         raise Exception('Error: selected period {} not in observation periods for {}, check config'.format(select_period,config.agn()))
@@ -506,9 +508,9 @@ def CalibrationOutlierPlot(model,select_period,fltr=None,add_model=False,overwri
     
     # All the calibrated lightcurves pre-fitting on the same plot
     if add_model:
-        calib_curve_plot = '{}/Calibrated_LCs_Model_{}.pdf'.format(config.output_dir(),select_period)
+        calib_curve_plot = '{}/Calibrated_LCs_Model_{}{}.pdf'.format(config.output_dir(),select_period,fltr_ext)
     else:
-        calib_curve_plot = '{}/Calibrated_LCs_{}.pdf'.format(config.output_dir(),select_period)
+        calib_curve_plot = '{}/Calibrated_LCs_{}{}.pdf'.format(config.output_dir(),select_period,fltr_ext)
 
     data=[]
     plt.style.use(['seaborn'])
@@ -602,6 +604,7 @@ def CalibrationOutlierPlot(model,select_period,fltr=None,add_model=False,overwri
         if add_model:
             axsi.errorbar(mjd[prm], flux[prm], yerr=err[prm], ls='none', marker=".", ms=3.5, elinewidth=0.5,color="red",label="Outliers for removal")
             axsi.plot(blurred_roa_model[0],blurred_roa_model[1]*1.25,ls='dashed',color="red",label="ROA flux model (delta=8*{}) + 25%\n(under 25% outliers permitted)".format(delta))
+            axsi.set_ylim(ymax=np.maximum(np.max(blurred_roa_model[1]*1.25)*1.05,np.max(flux)*1.05))
         axsi.set_ylabel('{} filter flux'.format(ff))
         axsi.legend()
         if add_model:
