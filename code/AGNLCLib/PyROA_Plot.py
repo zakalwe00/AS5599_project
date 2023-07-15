@@ -432,6 +432,10 @@ def FitPlot(model,select_period,overwrite=False,noprint=True):
         interp = interpolate.interp1d(t, m, kind="linear", fill_value="extrapolate")
         interpmodel = interp(mjd)
         residuals = interpmodel - flux
+        # normalise residuals
+        residual_mean = np.mean(residuals)
+        residual_rms = np.std(residuals)
+        residuals = (residuals - residual_mean)/residual_rms
         ax0_resid.plot(mjd,residuals, ls='none', marker='.', ms=0.75, color='#1f77b4', label='Residual')
         ax0_resid.axhline(y = 0.0, color="black", ls="--",lw=0.5)
         ax1_resid.hist(residuals, orientation="horizontal", color='#1f77b4')
@@ -514,17 +518,22 @@ def CalibrationOutlierPlot(model,select_period,fltr=None,add_model=False,overwri
         "figure.figsize":[18,7.5],
         "font.size": 14})
     fig, axs = plt.subplots(len(fltrs),sharex=True)
-    if len(fltrs) == 1:
-        axs_is_array=False
+    if add_model:
+        #Add plots of normalised ROA data window weights
+        height_ratios = []
+        for i in range(len(fltrs)):
+            height_ratios = height_ratios + [2,1]
+        gs = gridspec.GridSpec(len(fltrs)*2, 1,height_ratios=height_ratios)
+        range_step = 2
     else:
-        axs_is_array=True
+        gs = gridspec.GridSpec(len(fltrs), 1)
+        range_step = 1
+
     remove_outliers = []
     fig.suptitle('{} {} Calibrated light curves'.format(config.agn(),select_period))
     for i,ff in enumerate(fltrs):
-        if axs_is_array:
-            axsi = axs[i]
-        else:
-            axsi = axs
+        ff = fltrs[i]
+        axsi = plt.subplot(gs[i*range_step])
         calib_file = '{}/{}_{}.dat'.format(config.output_dir(),config.agn_name(),ff)
         df_orig = pd.read_csv(calib_file,
                               header=None,index_col=None,
@@ -574,12 +583,12 @@ def CalibrationOutlierPlot(model,select_period,fltr=None,add_model=False,overwri
             
             #Get point weight  density model based on delta (if given) or the median cadence
             density_model = Utils.WindowDensity(mjd.to_numpy(),err.to_numpy(),delta)
-            interp_density = interpolate.interp1d(density_model[0], density_model[1], kind="linear", fill_value="extrapolate")
+            # normalise the density model
+            density_mean = np.mean(density_model[1])
+            density_rms = np.std(density_model[1])
+            density_model_norm = (density_model[1] - density_mean)/density_rms
+            interp_density = interpolate.interp1d(density_model[0], density_model_norm, kind="linear", fill_value="extrapolate")
             density = interp_density(mjd)
-            # normalise the density
-            density_mean = np.mean(density)
-            density_rms = np.std(density)
-            density = (density - density_mean)/density_rms
             #potential outlier (a two-sigma difference from the blurred RunningOptimalAverage)
             #in relatively low density datapoint areas may by flagged for removal
             prm = np.logical_and(density < 0.5,potential_outlier)
@@ -589,13 +598,22 @@ def CalibrationOutlierPlot(model,select_period,fltr=None,add_model=False,overwri
                 print(remove_outliers)
                 #save *.dat aside with outliers removed
                 model.remove_fltr_outliers(fltr,remove_outliers)
-        axsi.errorbar(mjd, flux , yerr=err, ls='none', marker=".", ms=3.5, elinewidth=0.5,color="blue")
+        axsi.errorbar(mjd, flux , yerr=err, ls='none', marker=".", ms=3.5, elinewidth=0.5,color="blue",label="Calibrated flux")
         if add_model:
-            axsi.errorbar(mjd[prm], flux[prm], yerr=err[prm], ls='none', marker=".", ms=3.5, elinewidth=0.5,color="red")
+            axsi.errorbar(mjd[prm], flux[prm], yerr=err[prm], ls='none', marker=".", ms=3.5, elinewidth=0.5,color="red",label="Outliers for removal")
+            axsi.plot(blurred_roa_model[0],blurred_roa_model[1]*1.25,ls='dashed',color="red",label="ROA flux model (delta=8*{}) + 25%\n(under 25% outliers permitted)".format(delta))
         axsi.set_ylabel('{} filter flux'.format(ff))
+        axsi.legend()
         if add_model:
-            axsi.plot(model_mjd, model_flux, color="grey", label="calibration_model", alpha=0.5)
+            axsi.plot(model_mjd, model_flux, color="grey", label="ROA calibration flux model (delta={})".format(delta), alpha=0.5)
             axsi.fill_between(model_mjd, model_flux+model_err, model_flux-model_err, alpha=0.5, color="grey")
+        axsi.legend()
+        if add_model:
+            axsi = plt.subplot(gs[i*range_step+1])
+            axsi.plot(density_model[0], density_model_norm, color="black", label="ROA window weights sum\n(normalised)",lw=0.5)
+            axsi.axhline(y = 0.0, color="black", lw=0.5, ls="dashed")
+            axsi.axhline(y = 0.5, lw=0.5, ls="dashed",color="red", label="ROA window weight = 0.5\n(over 0.5 outliers permitted)")
+            axsi.legend()
     axsi.set_xlabel('Time (days, MJD)')
     if Utils.check_file(calib_curve_plot) == True and overwrite==False:
         print('Not writing Calibrated light curve plot, file exists: {}'.format(calib_curve_plot))
@@ -649,7 +667,7 @@ def CalibrationSNR(model,select_period,fltr=None,overwrite=False,noprint=True):
                              delim_whitespace=True).sort_values(0)
             df = df[np.logical_and(df[0] >= mjd_range[0],
                                    df[0] <= mjd_range[1])]
-            # Remove large sigma residuals from the calibration model
+            # Remove large sigma outliers from the calibration model
             df = df[df[7] == False].loc[:,0:2]
             # remove all points with more than 3 times the median error
             df = Utils.filter_large_sigma(df,3.0,ff,noprint=noprint)
