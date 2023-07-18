@@ -458,7 +458,7 @@ def FitPlot(model,select_period,overwrite=False,noprint=True):
             ax0_resid.set_xlabel("Time")
             ax0_resid.label_outer()
         else:
-            plt.setp(ax0_resid.get_xticklabels(), visible=False)            
+            plt.setp(ax0_resid.get_xticklabels(), visible=False)
         
         plt.setp(ax0.get_xticklabels(), visible=False)
         plt.setp(ax1.get_xticklabels(), visible=False)
@@ -528,7 +528,7 @@ def CalibrationOutlierPlot(model,select_period,fltr=None,add_model=False,overwri
         gs = gridspec.GridSpec(len(fltrs)*2, 1,height_ratios=height_ratios)
         range_step = 2
     else:
-        gs = gridspec.GridSpec(len(fltrs), 1)
+        gs = gridspec.GridSpec(len(fltrs), 1, hspace=0)
         range_step = 1
 
     remove_outliers = []
@@ -608,13 +608,14 @@ def CalibrationOutlierPlot(model,select_period,fltr=None,add_model=False,overwri
             axsi.errorbar(mjd[prm], flux[prm], yerr=err[prm], ls='none', marker=".", ms=3.5, elinewidth=0.5,color="red",label="Outliers for removal")
             axsi.plot(blurred_roa_model[0],blurred_roa_model[1]*1.25,ls='dashed',color="red",label="ROA flux model (delta=8*{}) + 25%\n(under 25% outliers permitted)".format(delta))
             axsi.set_ylim(ymax=np.maximum(np.max(blurred_roa_model[1]*1.25)*1.05,np.max(flux)*1.05))
-        axsi.set_ylabel('{} filter flux'.format(ff))
-        axsi.legend()
+            axsi.set_ylabel('{} filter flux'.format(ff))
+        else:
+            axsi.set_ylabel('{}'.format(ff),color="blue")
+            plt.setp(axsi.get_yticklabels(), visible=False)            
         if add_model:
             axsi.plot(model_mjd, model_flux, color="grey", label="ROA calibration flux model (delta={})".format(delta), alpha=0.5)
             axsi.fill_between(model_mjd, model_flux+model_err, model_flux-model_err, alpha=0.5, color="grey")
-        axsi.legend()
-        if add_model:
+            axsi.legend()
             axsi = plt.subplot(gs[i*range_step+1])
             axsi.plot(density_model[0], density_model_norm, color="black", label="ROA window weights sum\n(normalised)",lw=0.5)
             axsi.axhline(y = 0.0, color="black", lw=0.5, ls="dashed")
