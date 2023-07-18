@@ -754,10 +754,14 @@ def signal_to_noise(df, sig_level, fltr, noprint=True):
     m = (m-m_mean)/m_rms
     err = err/m_rms
 
-    #Calculate SNR
-    m_rms = np.sqrt(np.mean(m**2))
-    err_mean = np.mean(err)
-    snr = np.mean(m_rms/err_mean)
+    ##Calculate SNR
+    # Original method
+    #m_rms = np.sqrt(np.mean(m**2))
+    #err_mean = np.mean(err)
+    #snr = np.mean(m_rms/err_mean)
+    # Add in quadrature
+    snr_per_datapoint = m/err
+    snr = np.sqrt(np.sum(snr_per_datapoint**2)/len(m))
 
     if noprint == False:
         print('Calculated mean SNR={:.3f} for filter {} based on {} observations'.format(snr,fltr,numgood))
