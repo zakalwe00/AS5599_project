@@ -532,7 +532,10 @@ def CalibrationOutlierPlot(model,select_period,fltr=None,add_model=False,overwri
         range_step = 1
 
     remove_outliers = []
-    fig.suptitle('{} {} Calibrated light curves'.format(config.agn(),select_period))
+    if add_model:
+        fig.suptitle('{} {} calibration analysis for filter band {}'.format(config.agn(),select_period,fltr))
+    else:
+        fig.suptitle('{} {} Calibrated light curves'.format(config.agn(),select_period))
     for i,ff in enumerate(fltrs):
         ff = fltrs[i]
         axsi = plt.subplot(gs[i*range_step])
