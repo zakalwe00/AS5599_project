@@ -116,7 +116,7 @@ class AGNLCModel():
         
         # Load local copy of Las Cumbres Observatory data sourced from AVA https://www.alymantara.com/ava/
         # (if available for this AGN)
-        lco_lc_file = '{0}/{1}/LCO/AVA_{1}_lco.csv'.format(PROJECTDIR,self.config().agn())
+        lco_lc_file = '{}/{}/LCO/AVA_{}_lco.csv'.format(PROJECTDIR,self.config().agn_name(),self.config().agn())
         if Utils.check_file(lco_lc_file) == False:
             raise Exception('LCO lightcurve file {} does not exist for this AGN. Source this from https://www.alymantara.com/ava/'.format(lco_lc_file))
         #print('Found LCO lightcurve file {}'.format(lco_lc_file))
