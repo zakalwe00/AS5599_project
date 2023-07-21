@@ -879,6 +879,7 @@ def write_scope_filter_data(config,obs_file,noprint=True,fltr=None,remove_outlie
     remove_outlier_flag = remove_outliers is not None and remove_outliers[0].shape[0] > 0
     params = config.data_params()
     MAX_FLUX = params.get('MAX_FLUX',None)
+    MIN_FLUX = params.get('MIN_FLUX',None)
     MAX_FLUX_ERR = params.get('MAX_FLUX_ERR',None)
     MAX_SIGMA = params.get('MAX_SIGMA',None)
     periods_to_mjd = config.observation_params()['periods']
@@ -905,8 +906,17 @@ def write_scope_filter_data(config,obs_file,noprint=True,fltr=None,remove_outlie
                                             obs_fltr['Flux'] <= 0.0)
             if np.sum(bad_values_flux):
                 if noprint == False:
-                    print('Throw out bad observations for filter {}:\n{}'.format(fltr,obs_fltr[bad_values_flux]))
+                    print('Throw out bad observations > {} for filter {}:\n{}'.format(MAX_FLUX,fltr,
+                                                                                      obs_fltr[bad_values_flux]))
                 obs_fltr = obs_fltr[bad_values_flux==False]
+
+        if MIN_FLUX is not None:
+            bad_values_min_flux = obs_fltr['Flux'] < MIN_FLUX
+            if np.sum(bad_values_min_flux):
+                if noprint == False:
+                    print('Throw out bad observations < {} for filter {}:\n{}'.format(MIN_FLUX,fltr,
+                                                                                      obs_fltr[bad_values_min_flux]))
+                obs_fltr = obs_fltr[bad_values_min_flux==False]
 
         if MAX_FLUX_ERR is not None:
             bad_values_err = np.logical_or(obs_fltr['Error'] > MAX_FLUX_ERR,
