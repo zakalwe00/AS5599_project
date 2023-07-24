@@ -1,6 +1,7 @@
 {
     "data": {
         "MAX_FLUX": 10000.0,
+	"MIN_FLUX": 0.1,
         "MAX_FLUX_ERR": 100.0
     },
     "calibration": {
