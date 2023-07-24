@@ -519,6 +519,8 @@ def CalibrationOutlierPlot(model,select_period,fltr=None,add_model=False,overwri
         "font.serif": ["DejaVu"],
         "figure.figsize":[18,7.5],
         "font.size": 14})
+    if add_model is False:
+            plt.rcParams.update({"figure.figsize":[14,7.5]})
     fig, axs = plt.subplots(len(fltrs),sharex=True)
     if add_model:
         #Add plots of normalised ROA data window weights
@@ -555,9 +557,12 @@ def CalibrationOutlierPlot(model,select_period,fltr=None,add_model=False,overwri
             model_mjd = load_model[0][model_mask]
             model_flux = load_model[1][model_mask]
             model_err = load_model[2][model_mask]
+        else:
+            #for displaying all curves together, remove soft sigma clipped points
+            #and any with particularly large error bars
+            df = df[df[7] == False]
+            df = Utils.filter_large_sigma(df,config.calibration_params()['sig_level'],ff,noprint=noprint)
 
-        # Flag large sigma residuals from the calibration model for display
-        sigma_clipped = df[7] == True
         data.append(df)
         
         mjd = data[i][0]
@@ -677,7 +682,7 @@ def CalibrationSNR(model,select_period,fltr=None,overwrite=False,noprint=True):
             # Remove large sigma outliers from the calibration model
             df = df[df[7] == False].loc[:,0:2]
             # remove all points with more than 3 times the median error
-            df = Utils.filter_large_sigma(df,3.0,ff,noprint=noprint)
+            df = Utils.filter_large_sigma(df,sig_level,ff,noprint=noprint)
             snr.append(Utils.signal_to_noise(df,sig_level,ff,noprint=noprint))
 
     ext = 'for AGN {} {}'.format(config.agn(),select_period)
