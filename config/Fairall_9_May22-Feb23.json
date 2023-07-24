@@ -3,11 +3,26 @@
 	"AGN": "Fairall_9",
         "periods": {
 	    "May22-Feb23": {
-		"mjd_range": [59700,60004]
+		"mjd_range": [59600,60004]
 	    }
 	}
     },
     "calibration": {
-	"constrain_dates": [59700,60004]
+	"constrain_dates": [59600,60004]
+    },
+    "CCF": {
+        "lag_range": [-8.0,8.0]
+    },
+    "ROA": {
+	"tau_prior": [-8.0,8.0],
+	"init_tau": {
+	    "g": 0.00,
+	    "B": 0.01,
+	    "u": 0.02,
+	    "V": 0.05,
+	    "r": 0.5,
+	    "i": 1.0,
+	    "z": 2.0
+	}
     }
 }
