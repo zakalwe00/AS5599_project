@@ -41,7 +41,8 @@ def PyCCF(model,fltr1,fltr2,overwrite=False):
     # Time lag range to consider in the CCF (days).
     # Must be small enough that there is some overlap between light curves at that shift
     # (i.e., if the light curves span 80 days, these values must be less than 80 days).
-    lag_range = params['lag_range']
+    # Update: match the tau prior from the ROA for cleanliness. These should be the same.
+    lag_range = config.roa_params()["tau_prior"]
     
     # lag range of data considered by year
     for period in params["periods"]:        

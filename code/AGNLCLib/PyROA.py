@@ -309,21 +309,33 @@ def Fit(model, select_period, overwrite=False):
     wavelengths = None
     
     # tau initialisation by filter
-    init_tau_map = roa_params["init_tau"]
+    init_tau_map = roa_params.get("init_tau",None)
     delay_ref = roa_params["delay_ref"]
     init_delta = roa_params["init_delta"]
     exclude_fltrs = roa_params["exclude_fltrs"]    
     fltrs = config.fltrs()
 
-    fltrs = [fltr for fltr in fltrs if fltr not in exclude_fltrs and fltr != delay_ref]
-    init_tau = [init_tau_map[fltr] for fltr in fltrs]
+    fltrs = [fltr for fltr in fltrs if fltr not in exclude_fltrs]
+    if init_tau_map is not None:
+        init_tau = [init_tau_map[fltr] for fltr in fltrs]
+    else:
+        init_tau = [0]*len(fltrs)
+        if (delay_dist == True):
+            init_tau = [1.0]*len(fltrs)
+        if (accretion_disk == True):
+            # wavelengths currently not initialised, FIX
+            init_tau = 5.0*(((np.array(wavelengths)/wavelengths[0]))**1.4)            
 
-    if len(fltrs) == 0:
+    # perturb init_tau to avoid repeated zeros
+    init_tau = init_tau +  1e-2 * np.random.randn(len(fltrs))
+
+    # should be at least the reference filter duplicate and one more
+    if len(fltrs) <= 1:
         raise Exception('Insufficient filter bands passed to PyROA Fit: {} with reference filter {}'.format(fltrs,delay_ref))        
 
     # Arrays of LC filter bands to include in calculation, with reference filter at head
     fltrs.insert(0,delay_ref)
-    init_tau.insert(0,0.0)
+    init_tau = np.insert(init_tau,0, [0.0])
     psi_types_map = roa_params.get("psi_types",None)
     psi_types = None
     if psi_types_map:
@@ -365,13 +377,6 @@ def Fit(model, select_period, overwrite=False):
     else:
         psi_types = [None]*len(fltrs)
         
-    if (init_tau == None):
-        init_tau = [0]*len(data)
-        if (delay_dist == True):
-            init_tau = [1.0]*len(data)
-        if (accretion_disk == True):
-            init_tau = 5.0*(((np.array(wavelengths)/wavelengths[0]))**1.4)
-            
     Nchunk = 2
     if (accretion_disk == False):
         Nchunk+=1

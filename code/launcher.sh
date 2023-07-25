@@ -75,14 +75,15 @@ then
     echo "--CCF--"
     for fltr in $FLTRS
     do
-	if [[ $fltr != $DELAY_REF ]]
+#       We want to include the delay ref to get error bar estimates?
+#	if [[ $fltr != $DELAY_REF ]]
+#	then
+	echo "Running $LAUNCH_SCRIPT $AGN ccf:$DELAY_REF,$fltr 2>&1|cat > $LOG_DIR/ccf_$fltr.log"
+	if [ $DRYRUN -ne 1 ]
 	then
-	    echo "Running $LAUNCH_SCRIPT $AGN ccf:$DELAY_REF,$fltr 2>&1|cat > $LOG_DIR/ccf_$fltr.log"
-	    if [ $DRYRUN -ne 1 ]
-	    then
-		$LAUNCH_SCRIPT $AGN ccf:$DELAY_REF,$fltr 2>&1|cat > "$LOG_DIR/ccf_$fltr.log"
-	    fi
+	    $LAUNCH_SCRIPT $AGN ccf:$DELAY_REF,$fltr 2>&1|cat > "$LOG_DIR/ccf_$fltr.log"
 	fi
+#	fi
     done
 fi
 

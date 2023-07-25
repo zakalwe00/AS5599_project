@@ -10,11 +10,7 @@
     "calibration": {
 	"constrain_dates": [59335,59590]
     },
-    "CCF": {
-        "lag_range": [-8.0,8.0]
-    },
     "ROA": {
-	"tau_prior": [-8.0,8.0],
 	"init_tau": {
 	    "g": 0.00,
 	    "B": 0.01,
