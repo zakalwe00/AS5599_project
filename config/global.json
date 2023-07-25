@@ -23,7 +23,7 @@
     "ROA": {
 	"A_prior": [0.0,2.0],
 	"B_prior": [0.0,2.0],
-	"tau_prior": [-8.0,8.0],
+	"tau_prior": [-10.0,10.0],
 	"delta_prior": [0.5,10.0],
 	"v_prior": [0.0, 10.0],
 	"delay_ref":"g",
@@ -34,8 +34,8 @@
 	"sig_level": 3.0,
 	"use_backend": false,
 	"resume_progress": false,
-	"Nsamples": 35000,
-        "Nburnin": 30000,
+	"Nsamples": 45000,
+        "Nburnin": 40000,
 	"Nparallel": 24
     },
     "ROA_Model1": {
