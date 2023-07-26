@@ -11,6 +11,7 @@
 	"constrain_dates": [58792,59945]
     },
     "ROA": {
+	"redshift": 0.00521,
 	"init_tau": {
 	    "u": 0.0,
 	    "B": 0.01,

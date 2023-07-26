@@ -36,7 +36,25 @@
 	"resume_progress": false,
 	"Nsamples": 35000,
         "Nburnin": 30000,
-	"Nparallel": 24
+	"Nparallel": 24,
+	"wavelengths": {
+	    "u": 3551,
+	    "B": 4361,
+	    "g": 4686,
+	    "V": 5448,
+	    "r": 6166,
+	    "i": 7480,
+	    "z": 8932
+	},
+	"band_colors": {
+	    "u":"#0652DD",
+	    "B":"#1289A7",
+	    "g":"#006266",
+	    "V":"#006266",
+	    "r":"#A3CB38",
+	    "i":"orange",
+	    "z":"#EE5A24"
+	}
     },
     "ROA_Model1": {
 	"delay_dist": false,

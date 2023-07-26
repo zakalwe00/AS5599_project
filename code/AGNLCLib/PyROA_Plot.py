@@ -9,6 +9,9 @@ import numpy as np
 import pandas as pd
 import csv
 import pickle
+import matplotlib.ticker as mtick
+import matplotlib.ticker as ticker
+import astropy.units as u
 import matplotlib
 import matplotlib.pyplot as plt
 from matplotlib import gridspec
@@ -963,4 +966,301 @@ def CornerPlot(model,select_period,select='tau',overwrite=False):
         plt.show()
     else:
         plt.close()
+
+
+def FluxFlux(model,select_period,overwrite=False):
+    """Flux-Flux analysis and Spectral energy distribution as
+    estimated by PyROA."""
+
+    # E(B-V) value of the line-of-sight extinction towards the AGN. 
+    # The SED plot will be corrected by this amount following 
+    # Fitzpatrick (1999) parametrisation.
+    # Using 0.027 for this
+
+    config = model.config()
+    roa_params = config.roa_params()
+    ccf_params = config.ccf_params()
+
+    delay_ref = roa_params["delay_ref"]
+    roa_model = roa_params["model"]
+    mjd_range = config.observation_params()['periods'][select_period]['mjd_range']
+    sig_level = roa_params["sig_level"]
+    exclude_fltrs = roa_params["exclude_fltrs"]    
+    fltrs = config.fltrs()
+
+    fltrs = [fltr for fltr in fltrs if fltr not in exclude_fltrs and fltr != delay_ref]
+
+    redshift = roa_params["redshift"]
+    
+    wavelengths = roa_params["wavelengths"]
+    wavelengths = [wavelengths[fltr] for fltr in fltrs]
+
+    band_colors = roa_params["band_colors"]
+    band_colors = [band_colors[fltr] for fltr in fltrs]
+
+    add_ext = '_{}_{}'.format(roa_params['model'],select_period)
+
+    samples_file = '{}/samples_flat{}.obj'.format(config.output_dir(),add_ext)
+    if Utils.check_file(samples_file) == False:
+        input_ext = '_{}'.format(roa_model)
+    else:
+        input_ext = add_ext
+
+    filehandler = open('{}/samples_flat{}.obj'.format(config.output_dir(),input_ext),"rb")
+    samples_flat = pickle.load(filehandler)
+
+    filehandler = open('{}/Lightcurves_models{}.obj'.format(config.output_dir(),input_ext),"rb")
+    models = pickle.load(filehandler)
+
+    filehandler = open('{}/X_t{}.obj'.format(config.output_dir(),input_ext),"rb")    
+    norm_lc = pickle.load(filehandler)
+
+    plt.rcParams.update({
+        "font.family": "Serif",  
+        "font.serif": ["Times New Roman"],
+        "figure.figsize":[16,12],
+        "font.size": 14})  
+
+    ylab = r"F$_{\nu}$"+" / mJy"
+
+    output_units = input_units = 'mJy'
+    funits = 1*u.mJy
+    ylab = r"F$_{\nu}$"+" / mJy"
+
+    wave = np.array(wavelengths)
+
+    #Split samples into chunks, 4 per lightcurve i.e A, B, tau, sig
+    chunk_size=4
+    transpose_samples = np.transpose(samples_flat)
+    #Insert zero where tau_0 would be 
+    transpose_samples = np.insert(transpose_samples, [2], np.array([0.0]*len(transpose_samples[1])), axis=0)
+    samples_chunks = [transpose_samples[i:i + chunk_size] for i in range(0, len(transpose_samples), chunk_size)] 
+
+    gal_spectrum,gal_spectrum_err,fnu_f,fnu_b,slope,slope_err = [],[],[],[],[],[]
+    fnu_f_err,fnu_b_err = [], []
+    
+    fig = plt.figure(figsize=(10,7))
+    xx = np.linspace(-15,5,300)
+    max_flux = 0.0
+    
+    kk = 0
+    fac_flux = np.ones(len(wavelengths))
+    for i in range(len(fltrs)):
+        if ((fltrs[i] != delay_ref) ):
+            calib_file = '{}/{}_{}.dat'.format(config.output_dir(),config.agn_name(),fltrs[i])    
+            df = pd.read_csv(calib_file,
+                             header=None,index_col=None,
+                             quoting=csv.QUOTE_NONE,
+                             delim_whitespace=True).sort_values(0)
+            df = df[np.logical_and(df[0] >= mjd_range[0],
+                                   df[0] <= mjd_range[1])]
+            # Remove large sigma outliers from the calibration model
+            data = df[df[7] == False].loc[:,0:2]
+            # remove all points with more than 3 times the median error
+            data = Utils.filter_large_sigma(data,sig_level,fltrs[i],noprint=True).to_numpy()
+            
+            snu_mcmc = samples_chunks[i][0]
+            cnu_mcmc = samples_chunks[i][1]            
+            sig = np.percentile(samples_chunks[i][3], 50)
+
+            mc_pl = np.zeros((200,xx.size))
+
+            for lo in range(200):
+                jj = int(np.random.uniform(0,snu_mcmc.size))
+                mc_pl[lo] = cnu_mcmc[jj] + xx * snu_mcmc[jj]
+            
+            if i == 0: 
+                x_gal_mcmc = -cnu_mcmc/snu_mcmc
+                x_gal = np.median(x_gal_mcmc)
+                x_gal_error = np.std(-cnu_mcmc/snu_mcmc)
+                
+            gal_spectrum_mcmc = np.median(cnu_mcmc) +  (x_gal_mcmc+x_gal_mcmc.std()) * np.median(snu_mcmc)
+            
+            gal_spectrum.append(gal_spectrum_mcmc.mean())
+            gal_spectrum_err.append(gal_spectrum_mcmc.std())
+            
+            fnu_f_mcmc = snu_mcmc * (np.min(norm_lc[1]) - x_gal_mcmc)
+            fnu_b_mcmc = snu_mcmc * (np.max(norm_lc[1]) - x_gal_mcmc)
+    
+            fnu_f.append(fnu_f_mcmc.mean())
+            fnu_f_err.append(fnu_f_mcmc.std())
+
+            fnu_b.append(fnu_b_mcmc.mean())
+            fnu_b_err.append(fnu_b_mcmc.std())
+
+            slope.append(np.median(snu_mcmc))
+            slope_err.append(np.std(snu_mcmc))
+
+            lin_fit = np.median(snu_mcmc) * xx + np.median(cnu_mcmc)
+            
+            
+            if wavelengths != None:	   
+
+                         
+                if (input_units != 'flam') and (output_units !='flam'):
+                    wave = wavelengths[i+kk] * u.Angstrom
+                    dd = funits
+                    #print(input_units,output_units)
+                    if output_units != 'fnu':
+                        fac_flux[i+kk] = dd.cgs.to(output_units).value
+                    else:
+                        fac_flux[i+kk] = dd.cgs.to('erg s^-1 cm^-2 Hz^-1').value
+
+                if (input_units != 'flam') and (output_units =='flam'):
+                    wave = wavelengths[i+kk] * u.Angstrom
+                    dd = funits/(wave**2)*ct.c
+
+                    #print(dd.cgs.to('erg/s/cm^2/Angstrom'))
+                    #print(funits.to('erg/s/cm**2/Hz'),wave,dd.cgs,fac_flux)
+                    fac_flux[i+kk] = dd.cgs.to('erg s^-1 cm^-2 Angstrom^-1').value/1e-15
+
+                    #fac_flux[i+kk] = dd.cgs.to('erg s^-1 cm^-2 Angstrom^-1').value
+                    #logo = int(np.log10(fnu_b[0]*fac_flux[0]))
+                    #print(fnu_b[i+kk]*fac_flux[i+kk],logo)
+                    #fac_flux[i+kk]= fac_flux[i+kk]*10**(logo)
+
+                if (input_units == 'flam') and (output_units !='flam'):
+                    wave = wavelengths[i+kk] * u.Angstrom
+                    dd = funits/ct.c*(wave**2)
+                    if output_units != 'fnu':
+                        fac_flux[i+kk] = dd.cgs.to(output_units).value
+                    else:
+                        fac_flux[i+kk] = dd.cgs.to('erg s^-1 cm^-2 Hz^-1').value
+
+                #print(i+kk,fac_flux)
+
+            plt.fill_between(xx,(mc_pl.mean(axis=0)+mc_pl.std(axis=0))*fac_flux[i+kk],
+                        (mc_pl.mean(axis=0)-mc_pl.std(axis=0))*fac_flux[i+kk],
+                        color=band_colors[i],
+                        alpha=0.3)
+            interp_xt = np.interp(data[:,0],norm_lc[0],norm_lc[1])
+            plt.errorbar(interp_xt,data[:,1]*fac_flux[i+kk],
+            			yerr=np.sqrt(data[:,2]**2+sig**2)*fac_flux[i+kk],
+            			color=band_colors[i],
+                        ls='None',alpha=0.8)
+            plt.plot(xx,lin_fit*fac_flux[i+kk],color=band_colors[i],lw=3)
+            max_flux = np.max([max_flux,np.max(data[:,1]*fac_flux[i+kk])])
+        else:
+        	kk = -1
+    fnu_f = np.array(fnu_f)
+    fnu_f_err = np.array(fnu_f_err)
+    fnu_b = np.array(fnu_b)
+    fnu_b_err = np.array(fnu_b_err)
+    slope = np.array(slope)
+    slope_err = np.array(slope_err)
+    gal_spectrum = np.array(gal_spectrum)
+    gal_spectrum_err = np.array(gal_spectrum_err)
+
+    plt.axvline(x=np.median(x_gal_mcmc+x_gal_mcmc.std()),color='r',
+    			linestyle='-.',label=r'Galaxy')
+    plt.axvline(x=np.min(norm_lc[1]),color='k',
+    			linestyle='--',label=r'F$_{\rm faint}$')
+    plt.axvline(x=np.max(norm_lc[1]),color='grey',
+    			linestyle='--',label=r'F$_{\rm bright}$')
+
+    lg = plt.legend(ncol=4)
+    plt.xlim(x_gal-1,3)
+    #print()
+    plt.ylim(-0.04*fac_flux[-1],max_flux*1.2)
+    limits = None
+    if limits != None: plt.ylim(-0.04,limits[1])
+    
+    plt.xlabel(r'$X_0 (t)$, Normalised driving light curve flux')
+    plt.ylabel(ylab)
+    plt.tight_layout()
+
+    output_file = '{}/pyroa_fluxflux{}.pdf'.format(config.output_dir(),add_ext)
+    if (os.path.exists(output_file) == True) and (overwrite == False):
+        print('Not writing pyroa fluxflux graph, file exists: {}'.format(output_file))
+    else:
+        print('Writing pyroa fluxflux plot {}'.format(output_file))
+        plt.savefig(output_file)
+    if matplotlib.get_backend() == 'TkAgg':
+        plt.show()
+    else:
+        plt.close()
+    
+    wave = np.array(wavelengths)
+    fig = plt.figure(figsize=(10,7))
+    ax = fig.add_subplot(111)
+    xxx = np.arange(2000,9300)
+    #plt.plot(xxx, 0.2*(xxx/3800)**(-7/3.)*(xxx**2/2.998e18)/1e-9*1000,'-',color='#6ab04c',
+    #         label=r'F$_{\nu}\propto\lambda^{-1/3}$',lw=2)
+    
+    # AGN variability range
+    plt.fill_between(wave/(1+redshift),(np.array(Utils.unred(wave,fnu_b,0.027)))*fac_flux,
+        	     (np.array(Utils.unred(wave,fnu_f,0.027)))*fac_flux
+                     ,color='k',alpha=0.1,label='AGN variability')
+    ### F_bright - F_faint
+    plt.errorbar(wave/(1+redshift),(np.array(Utils.unred(wave,fnu_b,0.027)) - \
+                                    np.array(Utils.unred(wave,fnu_f,0.027)))*fac_flux,
+                 yerr=np.sqrt((np.array(fnu_f_err))**2 + (np.array(fnu_b_err))**2)*fac_flux,
+                 marker='.',linestyle='-',color='k',
+                 label=r'F$_{\rm bright}$ - F$_{\rm faint}$',ms=15)
+
+    ### AGN RMS
+    plt.errorbar(wave/(1+redshift),np.array(Utils.unred(wave,slope,0.027))*fac_flux,
+                 yerr=0,marker='o',linestyle='--',color='grey',label='AGN RMS')
+        
+    ### Galaxy spectrum
+    plt.errorbar(wave/(1+redshift),Utils.unred(wave,gal_spectrum,0.027)*fac_flux,
+                 yerr=gal_spectrum_err*fac_flux,
+                 marker='s',color='r',label='Galaxy',linestyle='-.')
+
+    #print(fac_flux)
+    plt.xscale('log')
+    plt.yscale('log')
+    plt.xlim(np.min(wave/(1+redshift))-100,np.max(wave/(1+redshift))+100)
+    #print(np.min(np.array(Utils.unred(wave,slope,0.027)))*0.7,max_flux*1.2)
+    plt.ylim(np.min(np.array(Utils.unred(wave,slope,0.027)))*0.7*fac_flux[-1],max_flux*1.2)
+    if limits != None: plt.ylim(limits[0],limits[1])
+    lg = plt.legend(ncol=2)
+    if redshift > 0:
+        plt.xlabel(r'Rest Wavelength / $\mathrm{\AA}$')
+    else:
+        plt.xlabel(r'Observed Wavelength / $\mathrm{\AA}$')
+    plt.ylabel(ylab)
+
+    ax.yaxis.set_major_formatter(mtick.FormatStrFormatter('%.2f'))
+    ax.xaxis.set_major_formatter(mtick.FormatStrFormatter('%.0f'))
+    ax.xaxis.set_minor_formatter(mtick.FormatStrFormatter('%.0f'))
+    ax.xaxis.set_minor_locator(ticker.MultipleLocator(2000))
+    plt.tight_layout()
+
+    output_file = '{}/pyroa_SED{}.pdf'.format(config.output_dir(),add_ext)
+    if (os.path.exists(output_file) == True) and (overwrite == False):
+        print('Not writing pyroa SED graph, file exists: {}'.format(output_file))
+    else:
+        print('Writing calibration plot {}'.format(output_file))
+        plt.savefig(output_file)
+    if matplotlib.get_backend() == 'TkAgg':
+        plt.show()
+    else:
+        plt.close()
+
+    d = {'wave': wave, 
+    	'agn_b': np.array(fnu_b),
+    	'agn_b_err': np.array(fnu_b_err),
+    	'agn_f': np.array(fnu_f),
+    	'agn_f_err': np.array(fnu_f_err),
+    	'agn_rms': np.array(slope),
+    	'agn_rms_err':np.array(slope_err),
+    	'gal': np.array(gal_spectrum),
+    	'gal_err': np.array(gal_spectrum_err),
+    	'unred_agn_b': np.array(Utils.unred(wave,fnu_b,0.027)),
+    	'unred_agn_b_err': np.array(Utils.unred(wave,fnu_b_err,0.027)),
+    	'unred_agn_f': np.array(Utils.unred(wave,fnu_f,0.027)),
+    	'unred_agn_f_err': np.array(Utils.unred(wave,fnu_f_err,0.027)),
+    	'unred_agn_rms': np.array(Utils.unred(wave,slope,0.027)),
+    	'unred_agn_rms_err':np.array(Utils.unred(wave,slope_err,0.027)),
+    	'unred_gal': np.array(Utils.unred(wave,gal_spectrum,0.027)),
+    	'unred_gal_err': np.array(Utils.unred(wave,gal_spectrum_err,0.027))}
+    df = pd.DataFrame(data=d)
+
+    output_file = '{}/pyroa_fluxflux{}.csv'.format(config.output_dir(),add_ext)
+    if (os.path.exists(output_file) == True) and (overwrite == False):
+        print('Not writing pyroa fluxflux data, file exists: {}'.format(output_file))
+    else:
+        print('Writing pyroa fluxflux data {}'.format(output_file))
+        df.to_csv(output_file,index=False)
 

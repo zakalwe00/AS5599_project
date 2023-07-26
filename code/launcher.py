@@ -32,7 +32,9 @@ FUNCTION_MAPPING = {
     'roa_plot': AGNLCLib.FitPlot,
     'roa_conv_plot': AGNLCLib.ConvergencePlot,
     'roa_chains_plot': AGNLCLib.ChainsPlot,
-    'roa_corner_plot': AGNLCLib.CornerPlot }
+    'roa_corner_plot': AGNLCLib.CornerPlot,
+    'roa_fluxflux': AGNLCLib.FluxFlux}
+    
 
 # Uses PYCCF code adapted from https://bitbucket.org/cgrier/python_ccf_code/src/master/
 # installed on turgon but not AWS
