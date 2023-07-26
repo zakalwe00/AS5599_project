@@ -51,7 +51,7 @@
 	    "r":"#A3CB38",
 	    "i":"orange",
 	    "z":"#EE5A24"
-	}
+	},
 	"Nsamples": 45000,
         "Nburnin": 40000,
 	"Nparallel": 24
