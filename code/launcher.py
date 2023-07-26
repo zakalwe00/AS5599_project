@@ -33,7 +33,9 @@ FUNCTION_MAPPING = {
     'roa_conv_plot': AGNLCLib.ConvergencePlot,
     'roa_chains_plot': AGNLCLib.ChainsPlot,
     'roa_corner_plot': AGNLCLib.CornerPlot,
-    'roa_fluxflux': AGNLCLib.FluxFlux}
+    'roa_fluxflux': AGNLCLib.FluxFlux,
+    'roa_lagspectrum': AGNLCLib.LagSpectrum
+}
     
 
 # Uses PYCCF code adapted from https://bitbucket.org/cgrier/python_ccf_code/src/master/

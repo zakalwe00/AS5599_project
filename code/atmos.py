@@ -78,51 +78,16 @@ output_file = '{}/atmos.pdf'.format(output_dir)
 plt.rcParams.update({
     "font.family": "Sans", 
     "font.serif": ["DejaVu"],
-    "figure.figsize":[8,6.5],
+    "figure.figsize":[9,5],
     "font.size": 14})
 
-CCD_file = '{}/CCD.csv'.format(output_dir)
-plt.plot(extinct[:,0],extinct[:,1],label='CCD',ls='dashed',color='black')
-
-interp = interpolate.interp1d(df_ccd_numpy[:,0], df_ccd_numpy[:,1], kind="linear", fill_value="extrapolate")
-
-for i,fltr in enumerate(bessell_fltr_names):
-    data_file = '{}/{}.csv'.format(output_dir,bessell_fltr_names[fltr])
-    df_numpy[fltr] = pd.read_csv(data_file).to_numpy()
+plt.plot(ext[:,0],ext[:,1],color='grey')
     
-for i,fltr in enumerate(sdss_fltr_names):
-    data_file = '{}/{}.csv'.format(output_dir,sdss_fltr_names[fltr])
-    df_numpy[fltr] = pd.read_csv(data_file).to_numpy()
-    
-for i,fltr in enumerate(panstarrs_fltr_names):
-    data_file = '{}/{}.csv'.format(output_dir,panstarrs_fltr_names[fltr])
-    df_numpy[fltr] = pd.read_csv(data_file).to_numpy()
-
-for fltr in fltr_order:
-    data = df_numpy[fltr]
-    interp_ccd_response = interp(data[:,0])
-    plt.plot(data[:,0],data[:,1],ls='dashed',color='grey',alpha=0.5)
-    data[:,1] = data[:,1]*interp_ccd_response
-    plt.plot(data[:,0],data[:,1],label=fltr)
-    
-plt.xlabel('$\lambda$ [nm]')
-plt.ylabel('Transmission')
-#plt.yscale('log')
-plt.ylim(ymin=0.0)
-plt.xlim(230,1120)
-plt.legend(loc='upper right')
-plt.title("Filter efficiency net of CCD sensitivity",fontsize=16)
-# make a plot
-#ax.plot(xx,yy,color="red")
-# set y-axis label
-#ax.set_ylabel("$A_{s}$ log-normal prior PDF",
-#              color="red",
-#              fontsize=14)
-# twin object second y-axis label
-#ax2=ax.twinx()
-# make a plot with different y-axis using second axis object
-#ax2.plot(xx, kk,color="blue")
-#ax2.set_ylabel("$B_{s}$ normal prior PDF",color="blue",fontsize=14)
+plt.xlabel('$\lambda$ ($\AA$)')
+plt.ylabel('Atmospheric Transmittance')
+plt.yscale('log')
+plt.ylim(0.005,1.5)
+plt.xlim(2300,11200)
 print('Writing {}'.format(output_file))
 plt.savefig(output_file)
 plt.show()

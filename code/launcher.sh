@@ -20,15 +20,18 @@ LOG_DIR=`$ARGS_SCRIPT $AGN tmp_dir`
 TESTEXT=${TESTEXT:-""}
 echo $TESTEXT
 DRYRUN=${DRYRUN:-0}
+RAW_PLOT=${RAW_PLOT:-0}
 CALIBRATE=${CALIBRATE:-0}
 CCF=${CCF:-0}
 ROA=${ROA:-0}
+ANALYSIS=${ANALYSIS:-0}
 echo "Running signal analysis for $AGN"
 echo "--LOGDIR--"
 echo "Writing parameters to $LOG_DIR/used_params.json"
 FLTRS=`$ARGS_SCRIPT $AGN fltrs`
 PERIODS=`$ARGS_SCRIPT $AGN periods`
 DELAY_REF=`$ARGS_SCRIPT $AGN delay_ref`
+
 if [ $RAW_PLOT -eq 1 ]
 then
     for fltr in $FLTRS
@@ -88,39 +91,57 @@ then
 fi
 
 if [ $ROA -eq 1 ]
-   then
-       echo "--ROA--"
-       for period in $PERIODS
-       do
-	   echo "Running $LAUNCH_SCRIPT $AGN roa:$period 2>&1|cat > $LOG_DIR/roa_$period.log"
-	   if [ $DRYRUN -ne 1 ]
-	   then
-	       $LAUNCH_SCRIPT $AGN roa:$period 2>&1|cat > "$LOG_DIR/roa_$period.log"
-	   fi
-	   echo "Running $LAUNCH_SCRIPT $AGN roa_plot:$period 2>&1|cat > $LOG_DIR/roa_plot_$period.log"
-	   if [ $DRYRUN -ne 1 ]
-	   then
-	       $LAUNCH_SCRIPT $AGN roa_plot:$period 2>&1|cat > "$LOG_DIR/roa_plot_$period.log"
-	   fi
-	   echo "Running $LAUNCH_SCRIPT $AGN roa_conv_plot:$period 2>&1|cat > $LOG_DIR/roa_conv_plot_$period.log"
-	   if [ $DRYRUN -ne 1 ]
-	   then
-	       $LAUNCH_SCRIPT $AGN roa_conv_plot:$period 2>&1|cat > "$LOG_DIR/roa_conv_plot_$period.log"
-	   fi
-	   echo "Running $LAUNCH_SCRIPT $AGN roa_chains_plot:$period,tau 2>&1|cat > $LOG_DIR/roa_chains_plot_tau_$period.log"
-	   if [ $DRYRUN -ne 1 ]
-	   then
-	       $LAUNCH_SCRIPT $AGN roa_chains_plot:$period,tau 2>&1|cat > "$LOG_DIR/roa_chains_plot_tau_$period.log"
-	   fi
-	   echo "Running $LAUNCH_SCRIPT $AGN roa_chains_plot:$period,delta 2>&1|cat > $LOG_DIR/roa_chains_plot_delta_$period.log"
-	   if [ $DRYRUN -ne 1 ]
-	   then
-	       $LAUNCH_SCRIPT $AGN roa_chains_plot:$period,delta 2>&1|cat > "$LOG_DIR/roa_chains_plot_delta_$period.log"
-	   fi
-	   echo "Running $LAUNCH_SCRIPT $AGN roa_corner_plot:$period,all 2>&1|cat > $LOG_DIR/roa_corner_plot_all_$period.log"
-	   if [ $DRYRUN -ne 1 ]
-	   then
-	       $LAUNCH_SCRIPT $AGN roa_corner_plot:$period,all 2>&1|cat > "$LOG_DIR/roa_corner_plot_all_$period.log"
-	   fi
-       done
+then
+    echo "--ROA--"
+    for period in $PERIODS
+    do
+	echo "Running $LAUNCH_SCRIPT $AGN roa:$period 2>&1|cat > $LOG_DIR/roa_$period.log"
+	if [ $DRYRUN -ne 1 ]
+	then
+	    $LAUNCH_SCRIPT $AGN roa:$period 2>&1|cat > "$LOG_DIR/roa_$period.log"
+	fi
+	echo "Running $LAUNCH_SCRIPT $AGN roa_plot:$period 2>&1|cat > $LOG_DIR/roa_plot_$period.log"
+	if [ $DRYRUN -ne 1 ]
+	then
+	    $LAUNCH_SCRIPT $AGN roa_plot:$period 2>&1|cat > "$LOG_DIR/roa_plot_$period.log"
+	fi
+    done
+fi
+
+if [ $ANALYSIS -eq 1 ]
+then
+    echo "--ANALYSIS--"
+    for period in $PERIODS
+    do
+	echo "Running $LAUNCH_SCRIPT $AGN roa_conv_plot:$period 2>&1|cat > $LOG_DIR/roa_conv_plot_$period.log"
+	if [ $DRYRUN -ne 1 ]
+	then
+	    $LAUNCH_SCRIPT $AGN roa_conv_plot:$period 2>&1|cat > "$LOG_DIR/roa_conv_plot_$period.log"
+	fi
+	echo "Running $LAUNCH_SCRIPT $AGN roa_chains_plot:$period,tau 2>&1|cat > $LOG_DIR/roa_chains_plot_tau_$period.log"
+	if [ $DRYRUN -ne 1 ]
+	then
+	    $LAUNCH_SCRIPT $AGN roa_chains_plot:$period,tau 2>&1|cat > "$LOG_DIR/roa_chains_plot_tau_$period.log"
+	fi
+	echo "Running $LAUNCH_SCRIPT $AGN roa_chains_plot:$period,delta 2>&1|cat > $LOG_DIR/roa_chains_plot_delta_$period.log"
+	if [ $DRYRUN -ne 1 ]
+	then
+	    $LAUNCH_SCRIPT $AGN roa_chains_plot:$period,delta 2>&1|cat > "$LOG_DIR/roa_chains_plot_delta_$period.log"
+	fi
+	echo "Running $LAUNCH_SCRIPT $AGN roa_corner_plot:$period,tau 2>&1|cat > $LOG_DIR/roa_corner_plot_tau_$period.log"
+	if [ $DRYRUN -ne 1 ]
+	then
+	    $LAUNCH_SCRIPT $AGN roa_corner_plot:$period,tau 2>&1|cat > "$LOG_DIR/roa_corner_plot_tau_$period.log"
+	fi
+	echo "Running $LAUNCH_SCRIPT $AGN roa_fluxflux:$period 2>&1|cat > $LOG_DIR/roa_fluxflux_$period.log"
+	if [ $DRYRUN -ne 1 ]
+	then
+	    $LAUNCH_SCRIPT $AGN roa_fluxflux:$period 2>&1|cat > "$LOG_DIR/roa_fluxflux_$period.log"
+	fi
+	echo "Running $LAUNCH_SCRIPT $AGN roa_lagspectrum:$period 2>&1|cat > $LOG_DIR/roa_lagspectrum_$period.log"
+	if [ $DRYRUN -ne 1 ]
+	then
+	    $LAUNCH_SCRIPT $AGN roa_lagspectrum:$period 2>&1|cat > "$LOG_DIR/roa_lagspectrum_$period.log"
+	fi
+    done
 fi
