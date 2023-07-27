@@ -298,8 +298,7 @@ def FitPlot(model,select_period,overwrite=False,noprint=True):
     exclude_fltrs = roa_params["exclude_fltrs"]    
     fltrs = config.fltrs()
 
-    fltrs = [fltr for fltr in fltrs if fltr not in exclude_fltrs and fltr != delay_ref]
-    fltrs = [delay_ref] + fltrs
+    fltrs = [fltr for fltr in fltrs if fltr not in exclude_fltrs]
 
     if len(fltrs) == 0:
         raise Exception('Insufficient filter bands passed to PyROA FitPlot: {} with reference filter {}'.format(fltrs,delay_ref))
@@ -322,11 +321,11 @@ def FitPlot(model,select_period,overwrite=False,noprint=True):
     filehandler = open('{}/samples_flat{}.obj'.format(config.output_dir(),input_ext),"rb")
     samples_flat = pickle.load(filehandler)
         
-    filehandler = open('{}/samples{}.obj'.format(config.output_dir(),input_ext),"rb")
-    samples = pickle.load(filehandler)
+#    filehandler = open('{}/samples{}.obj'.format(config.output_dir(),input_ext),"rb")
+#    samples = pickle.load(filehandler)
 
-    filehandler = open('{}/labels{}.obj'.format(config.output_dir(),input_ext),"rb")
-    labels = pickle.load(filehandler)
+#    filehandler = open('{}/labels{}.obj'.format(config.output_dir(),input_ext),"rb")
+#    labels = pickle.load(filehandler)
 
     filehandler = open('{}/Lightcurves_models{}.obj'.format(config.output_dir(),input_ext),"rb")
     models = pickle.load(filehandler)
@@ -349,8 +348,9 @@ def FitPlot(model,select_period,overwrite=False,noprint=True):
     mjd_min = 99999999.0
     
     # samples_chunks is length filters+1
+    # and we skip the first (delay_ref) filter
     for i in range(len(fltrs)):
-        sc = samples_chunks[i]
+        sc = samples_chunks[i+1]
         tau_min = np.minimum(np.min(sc[2]), tau_min)
         tau_max = np.maximum(np.max(sc[2]), tau_max)
         
@@ -404,7 +404,7 @@ def FitPlot(model,select_period,overwrite=False,noprint=True):
         err = data[i][:,2]
 
         # Add extra variance
-        sig = np.percentile(samples_chunks[i][-1], 50)
+        sig = np.percentile(samples_chunks[i+1][-1], 50)
         err = np.sqrt(err**2 + sig**2)
 
         # Organise subplot layout
@@ -419,7 +419,7 @@ def FitPlot(model,select_period,overwrite=False,noprint=True):
         # Plot Data
         ax0.errorbar(mjd, flux , yerr=err, ls='none', marker=".", color=band_colors[i], ms=2, elinewidth=0.75, label='Calibrated lightcurve')
         # Plot Model
-        t, m, errs = models[i]
+        t, m, errs = models[i+1]
         period_pick = np.logical_and(t >=mjd_min,t <= mjd_max)
         t = t[period_pick]
         m = m[period_pick]
@@ -445,7 +445,7 @@ def FitPlot(model,select_period,overwrite=False,noprint=True):
         ax1_resid.axhline(y = 0.0, color="black", ls="--",lw=0.5)
         
         # Plot Time delay posterior distributions
-        tau_samples = samples_chunks[i][2]
+        tau_samples = samples_chunks[i+1][2]
         ax1.hist(tau_samples, color=band_colors[i], bins=50, label=r'$\tau$ ROA dist')
         ax1.axvline(x = np.percentile(tau_samples, [16, 50, 84])[1], color="black",lw=0.5)
         ax1.axvline(x = np.percentile(tau_samples, [16, 50, 84])[0] , color="black", ls="--",lw=0.5)
@@ -654,7 +654,7 @@ def CalibrationSNR(model,select_period,fltr=None,overwrite=False,noprint=True):
     exclude_fltrs = roa_params["exclude_fltrs"]    
     fltrs = config.fltrs()
 
-    fltrs = [ff for ff in fltrs if ff not in exclude_fltrs and ff != delay_ref]    
+    fltrs = [ff for ff in fltrs if ff not in exclude_fltrs]
     fltrs = [delay_ref] + fltrs
     if fltr is not None:
         fltrs = [fltr]    
@@ -706,7 +706,7 @@ def ConvergencePlot(model,select_period,overwrite=False):
     exclude_fltrs = roa_params["exclude_fltrs"]    
     fltrs = config.fltrs()
     
-    fltrs = [fltr for fltr in fltrs if fltr not in exclude_fltrs and fltr != delay_ref]
+    fltrs = [fltr for fltr in fltrs if fltr not in exclude_fltrs]
     fltrs = [delay_ref] + fltrs
 
     add_ext = '_{}'.format(roa_params['model'])
@@ -776,7 +776,7 @@ def ChainsPlot(model,select_period,select='tau',start_sample=0,overwrite=False):
     exclude_fltrs = roa_params["exclude_fltrs"]    
     fltrs = config.fltrs()
 
-    fltrs = [fltr for fltr in fltrs if fltr not in exclude_fltrs and fltr != delay_ref]
+    fltrs = [fltr for fltr in fltrs if fltr not in exclude_fltrs]
     fltrs = [delay_ref] + fltrs
 
     if len(fltrs) == 0:
@@ -911,7 +911,7 @@ def CornerPlot(model,select_period,select='tau',overwrite=False):
     exclude_fltrs = roa_params['exclude_fltrs']    
     fltrs = config.fltrs()
 
-    fltrs = [fltr for fltr in fltrs if fltr not in exclude_fltrs and fltr != delay_ref]
+    fltrs = [fltr for fltr in fltrs if fltr not in exclude_fltrs]
     fltrs = [delay_ref] + fltrs
 
     if len(fltrs) == 0:
@@ -995,7 +995,7 @@ def FluxFlux(model,select_period,overwrite=False):
     exclude_fltrs = roa_params["exclude_fltrs"]    
     fltrs = config.fltrs()
 
-    fltrs = [fltr for fltr in fltrs if fltr not in exclude_fltrs and fltr != delay_ref]
+    fltrs = [fltr for fltr in fltrs if fltr not in exclude_fltrs]
 
     redshift = roa_params["redshift"]
     
@@ -1283,14 +1283,15 @@ def LagSpectrum(model,select_period,overwrite=False):
     fltrs = config.fltrs()
     # NEED TO CHANGE when delay_ref also in the ROA list
     #fltrs = [fltr for fltr in fltrs if fltr not in exclude_fltrs]
-    fltrs = [fltr for fltr in fltrs if fltr not in exclude_fltrs and fltr != delay_ref]
-    fltrs = [delay_ref] + fltrs
+    fltrs = [fltr for fltr in fltrs if fltr not in exclude_fltrs]
     redshift = roa_params["redshift"]
     wavelengths = roa_params["wavelengths"]
     wavelengths = [wavelengths[fltr] for fltr in fltrs]
     band_colors = roa_params["band_colors"]
     band_colors = [band_colors[fltr] for fltr in fltrs]
 
+    fltrs = [delay_ref] + fltrs
+    
     add_ext = '_{}_{}'.format(roa_params['model'],select_period)
 
     samples_file = '{}/samples_flat{}.obj'.format(config.output_dir(),add_ext)
