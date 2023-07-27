@@ -310,7 +310,7 @@ def FitPlot(model,select_period,overwrite=False,noprint=True):
         "font.family": "Sans",  
         "font.serif": ["DejaVu"],
         "figure.figsize":[16,12],
-        "font.size": 14})  
+        "font.size": 12})  
 
     samples_file = '{}/samples_flat{}.obj'.format(config.output_dir(),add_ext)
     if Utils.check_file(samples_file) == False:
@@ -370,10 +370,15 @@ def FitPlot(model,select_period,overwrite=False,noprint=True):
             df = df[np.logical_and(df[0] >= mjd_range[0],
                                    df[0] <= mjd_range[1])]
 
-            # Remove large sigma residuals from the calibration model
-            df = df[df[7] == False]
+            df = df[np.logical_and(df[0] >= mjd_range[0],
+                                   df[0] <= mjd_range[1])]
+            # Remove sigma clipped values
+            df = df[df[7] == False].loc[:,0:2]
+            # remove all points with more than 3 times the median error
+            # to clean up the plot
+            df = Utils.filter_large_sigma(df,sig_level,fltr,noprint=noprint)
 
-            df_to_numpy = df.loc[:,0:2].to_numpy()
+            df_to_numpy = df.to_numpy()
             
         mjd_min = np.minimum(np.min(df_to_numpy[:,0]), mjd_min)
         mjd_max = np.maximum(np.max(df_to_numpy[:,0]), mjd_max)
@@ -396,7 +401,13 @@ def FitPlot(model,select_period,overwrite=False,noprint=True):
 
     tau_min = np.maximum(tau_min,-2.0)
     tau_max = np.minimum(tau_max,2.0)
-        
+
+    main_handles = []
+    main_labels = []
+
+    tau_handles = []
+    tau_labels = []
+    
     ilast = len(fltrs) - 1
     for i,fltr in enumerate(fltrs):        
         mjd = data[i][:,0]
@@ -410,25 +421,40 @@ def FitPlot(model,select_period,overwrite=False,noprint=True):
         # Organise subplot layout
         #ax = fig.add_subplot(gs[i])
         
-        gssub = gs[i].subgridspec(2, 2, width_ratios=[5, 1], height_ratios=[2,1], hspace=0, wspace=0)
+        gssub = gs[i].subgridspec(2, 3, width_ratios=[5, 1, 1], height_ratios=[2,1], hspace=0, wspace=0)
         ax0 = fig.add_subplot(gssub[0,0])
         ax1 = fig.add_subplot(gssub[0,1])
+        # Add the big legend far right location for later
+        if i == 0:
+            ax_legend = fig.add_subplot(gssub[0,2])
+            ax_legend.axis('off')
+        if i == int(float(len(fltrs))/2):
+            ax_legend_tau = fig.add_subplot(gssub[0,2])
+            ax_legend_tau.axis('off')            
         ax0_resid = fig.add_subplot(gssub[1,0])
         ax1_resid = fig.add_subplot(gssub[1,1])
 
+        # Shrink x=axis by 10% in order to fit the legend on the right
+        #box = ax0.get_position()
+        #ax0.set_position([box.x0, box.y0, box.width * 0.8, box.height])
+        #box = ax1.get_position()
+        #ax1.set_position([box.x1, box.y1, box.width * 0.8, box.height])
+        #ax1.set_position([box.x0, box.y0+box.height*0.2, box.width * 0.9, box.height*0.8])
+        
         # Plot Data
-        ax0.errorbar(mjd, flux , yerr=err, ls='none', marker=".", color=band_colors[i], ms=2, elinewidth=0.75, label='Calibrated lightcurve')
+        ax0.errorbar(mjd, flux , yerr=err, ls='none', marker=".", color=band_colors[i], ms=2, elinewidth=0.75, label='{}'.format(fltr))
         # Plot Model
         t, m, errs = models[i+1]
         period_pick = np.logical_and(t >=mjd_min,t <= mjd_max)
         t = t[period_pick]
         m = m[period_pick]
         errs = errs[period_pick]
-        ax0.plot(t,m, color="black", lw=1, label='Model')
+        ax0.plot(t,m, color="black", lw=1, label='ROA Model')
         ax0.fill_between(t, m+errs, m-errs, alpha=0.5, color="black")
-        ax0.set_ylabel("Flux ({})".format(fltr),rotation=0,labelpad=30)
+        ax0.set_ylabel("Flux (mJy)",rotation=0,labelpad=40)
+        ax0.text(0.025, 0.055, '{}'.format(fltr), fontsize = 14, transform = ax0.transAxes, color=band_colors[i])
         ax0.set_xlim(mjd_min,mjd_max)
-        flux_margin = (np.max(flux) - np.min(flux))*0.1
+        flux_margin = (np.max(flux) - np.min(flux))*0.15
         ax0.set_ylim(np.min(flux)-flux_margin,np.max(flux)+flux_margin)
         
         # calculate residuals 
@@ -439,53 +465,81 @@ def FitPlot(model,select_period,overwrite=False,noprint=True):
         residual_mean = np.mean(residuals)
         residual_rms = np.std(residuals)
         residuals = (residuals - residual_mean)/residual_rms
-        ax0_resid.plot(mjd,residuals, ls='none', marker='.', ms=0.75, color='#1f77b4', label='Residual')
+        ax0_resid.plot(mjd,residuals, ls='none', marker='.', ms=0.75, color='#1f77b4',label='Residuals')
         ax0_resid.axhline(y = 0.0, color="black", ls="--",lw=0.5)
+        #ax0_resid.set_ylabel("Residuals",rotation=0,labelpad=30)
         ax1_resid.hist(residuals, orientation="horizontal", color='#1f77b4')
         ax1_resid.axhline(y = 0.0, color="black", ls="--",lw=0.5)
         
         # Plot Time delay posterior distributions
         tau_samples = samples_chunks[i+1][2]
-        ax1.hist(tau_samples, color=band_colors[i], bins=50, label=r'$\tau$ ROA dist')
-        ax1.axvline(x = np.percentile(tau_samples, [16, 50, 84])[1], color="black",lw=0.5)
-        ax1.axvline(x = np.percentile(tau_samples, [16, 50, 84])[0] , color="black", ls="--",lw=0.5)
-        ax1.axvline(x = np.percentile(tau_samples, [16, 50, 84])[2], color="black",ls="--",lw=0.5)
+        roa_tau = np.percentile(tau_samples, [16, 50, 84])        
+        dist_label = r'$\tau$'
+        dist_label = dist_label + r'$_{'+fltrs[i]+r'}$ ROA dist'+'\n{:3.2f} (+{:3.2f},-{:3.2})'.format(roa_tau[1],
+                                                                                                       roa_tau[0]-roa_tau[1],
+                                                                                                       roa_tau[2]-roa_tau[1])
+        ax1.hist(tau_samples, color=band_colors[i], bins=50, label=dist_label)
+        ax1.axvline(x = roa_tau[1], color="black",lw=0.5)
+        ax1.axvline(x = roa_tau[0] , color="black", ls="--",lw=0.5)
+        ax1.axvline(x = roa_tau[2], color="black",ls="--",lw=0.5)
         ax1.axvline(x = 0, color="black",ls="--")    
         ax1.yaxis.set_tick_params(labelleft=False)
         ax1.set_xlim(tau_min,tau_max)
         
         if ccf_data[i] is not None:
-            ax1.hist(ccf_data[i], bins = 50, color = 'grey', alpha=0.5, label=r'$\tau$ CCCD')
+            ax1.hist(ccf_data[i], bins = 50, color = 'grey', alpha=0.5, label=r'$\tau_{CCF}$ CCCD')
         
         if i == ilast:
             ax0_resid.set_xlabel("Time")
             ax0_resid.label_outer()
+            handles, labels = ax0.get_legend_handles_labels()
+            main_handles = main_handles + [handles[1],handles[0]]
+            main_labels = main_labels + [labels[1],labels[0]]
+            handles, labels = ax0_resid.get_legend_handles_labels()
+            main_handles = main_handles + handles
+            main_labels = main_labels + labels
+
+            handles, labels = ax1.get_legend_handles_labels()
+            tau_handles = tau_handles + handles
+            tau_labels = tau_labels + labels
         else:
             plt.setp(ax0_resid.get_xticklabels(), visible=False)
-        
+            handles, labels = ax0.get_legend_handles_labels()
+            main_handles = main_handles + [handles[1]]
+            main_labels = main_labels + [labels[1]]
+
+            handles, labels = ax1.get_legend_handles_labels()
+            tau_handles = tau_handles + [handles[0]]
+            tau_labels = tau_labels + [labels[0]]
+            
         plt.setp(ax0.get_xticklabels(), visible=False)
         plt.setp(ax1.get_xticklabels(), visible=False)
         plt.setp(ax1.get_yticklabels(), visible=False)
         plt.setp(ax1_resid.get_yticklabels(), visible=False)
         plt.setp(ax1_resid.get_xticklabels(), visible=False)
         ax1.set_yticks([])
+        ax0_resid.set_yticks([])
         ax1_resid.set_yticks([])
         ax1_resid.set_xticks([])
-        ax0.legend(loc='lower left', fontsize=10)
-        ax0_resid.legend(loc='lower left', fontsize=10)
+        #ax0.legend(loc='lower left', fontsize=10)
+        #ax0_resid.legend(loc='lower left', fontsize=10)
 
+        #ax1.legend(loc='upper left', fontsize=10)
+        
         if i == 0:
             title_ext = roa_model + ' {}'.format(select_period)
             ax0.set_title('{} Lightcurves {}'.format(config.agn(), title_ext), pad=10.0)
-        else:
-            ax1.legend(loc='upper left', fontsize=10)
-        
+
+    # Put a legend containing the keys to the right in the cleared space
+    ax_legend.legend(main_handles, main_labels, title='Calibrated Lightcurves',loc='center left', bbox_to_anchor=(0.0,-1))
+    ax_legend_tau.legend(tau_handles, tau_labels, title='Delay Distributions',loc='center left', bbox_to_anchor=(0.0,-2))
+    #ax_legend.legend(title="List 2",loc='center left', bbox_to_anchor=(0.0, -3.2))
 
     plt.subplots_adjust(wspace=0)
 
     output_file = '{}/ROA_LCs{}.pdf'.format(config.output_dir(),add_ext)
     if Utils.check_file(output_file) == True and overwrite==False:
-        print('Not running ROA FitPlot, file exists: {}'.format(output_file))
+        print('Not writing ROA FitPlot, file exists: {}'.format(output_file))
     else:
         print('Writing {}'.format(output_file))
         plt.savefig(output_file)
@@ -655,7 +709,7 @@ def CalibrationSNR(model,select_period,fltr=None,overwrite=False,noprint=True):
     fltrs = config.fltrs()
 
     fltrs = [ff for ff in fltrs if ff not in exclude_fltrs]
-    fltrs = [delay_ref] + fltrs
+
     if fltr is not None:
         fltrs = [fltr]    
     
@@ -915,7 +969,7 @@ def CornerPlot(model,select_period,select='tau',overwrite=False):
     fltrs = [delay_ref] + fltrs
 
     if len(fltrs) == 0:
-        raise Exception('Insufficient filter bands passed to PyROA FitPlot: {} with reference filter {}'.format(fltrs,delay_ref))
+        raise Exception('Insufficient filter bands passed to PyROA CornerPlot: {} with reference filter {}'.format(fltrs,delay_ref))
     
     add_ext = '_{}'.format(roa_model)
     add_ext = add_ext + '_{}'.format(select_period)

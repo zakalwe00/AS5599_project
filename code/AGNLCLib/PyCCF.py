@@ -139,7 +139,6 @@ def PyCCF(model,fltr1,fltr2,overwrite=False):
         peaktau_loerr = centau-(stats.scoreatpercentile(tlags_peak, (100.-perclim)))
         print('Peak, errors: %10.3f  (+%10.3f -%10.3f)'%(peaktau, peaktau_uperr, peaktau_loerr))
 
-
         ##########################################
         #Write results out to a file in case we want them later.
         ##########################################
@@ -180,15 +179,15 @@ def PyCCF(model,fltr1,fltr2,overwrite=False):
 
         ax1.text(0.025, 0.825, 'ref: {}'.format(fltr1), fontsize = 10, transform = ax1.transAxes, color="red")
         ax1_2.text(0.025, 0.825, 'filter: {}'.format(fltr2), fontsize = 10, transform = ax1_2.transAxes, color="red")
-        ax1.set_ylabel('Flux')
-        ax1_2.set_ylabel('Flux')
+        ax1.set_ylabel('Flux (mJy)')
+        ax1_2.set_ylabel('Flux (mJy)')
         ax1_2.set_xlabel('MJD')
 
         #Plot CCF Information
         ax2 = fig.add_subplot(3, 3, 7)
         ax2.set_ylabel('CCF r')
         ax2.text(0.3, 0.75, 'CCF ', horizontalalignment = 'center', verticalalignment = 'center', transform = ax2.transAxes, fontsize = 10)
-        ax2.set_ylim(-0.2, 1.2)
+        ax2.set_ylim(0.0, 1.0)
         # only one line may be specified; full height
         ax2.axvline(x=0,color='gray')
         ax2.axhline(y=0,color='gray')

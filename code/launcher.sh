@@ -100,11 +100,6 @@ then
 	then
 	    $LAUNCH_SCRIPT $AGN roa:$period 2>&1|cat > "$LOG_DIR/roa_$period.log"
 	fi
-	echo "Running $LAUNCH_SCRIPT $AGN roa_plot:$period 2>&1|cat > $LOG_DIR/roa_plot_$period.log"
-	if [ $DRYRUN -ne 1 ]
-	then
-	    $LAUNCH_SCRIPT $AGN roa_plot:$period 2>&1|cat > "$LOG_DIR/roa_plot_$period.log"
-	fi
     done
 fi
 
@@ -113,6 +108,11 @@ then
     echo "--ANALYSIS--"
     for period in $PERIODS
     do
+	echo "Running $LAUNCH_SCRIPT $AGN roa_plot:$period 2>&1|cat > $LOG_DIR/roa_plot_$period.log"
+	if [ $DRYRUN -ne 1 ]
+	then
+	    $LAUNCH_SCRIPT $AGN roa_plot:$period 2>&1|cat > "$LOG_DIR/roa_plot_$period.log"
+	fi
 	echo "Running $LAUNCH_SCRIPT $AGN roa_conv_plot:$period 2>&1|cat > $LOG_DIR/roa_conv_plot_$period.log"
 	if [ $DRYRUN -ne 1 ]
 	then
