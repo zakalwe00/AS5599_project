@@ -577,7 +577,7 @@ def CalibrationOutlierPlot(model,select_period,fltr=None,add_model=False,overwri
         "figure.figsize":[18,7.5],
         "font.size": 14})
     if add_model is False:
-            plt.rcParams.update({"figure.figsize":[14,7.5]})
+        plt.rcParams.update({"figure.figsize":[8,6]})
     fig, axs = plt.subplots(len(fltrs),sharex=True)
     if add_model:
         #Add plots of normalised ROA data window weights
@@ -591,13 +591,10 @@ def CalibrationOutlierPlot(model,select_period,fltr=None,add_model=False,overwri
         range_step = 1
 
     remove_outliers = []
-    if add_model:
-        fig.suptitle('{} {} calibration analysis for filter band {}'.format(config.agn(),select_period,fltr))
-    else:
-        fig.suptitle('{} {} Calibrated light curves'.format(config.agn(),select_period))
+    old_axsi = None
     for i,ff in enumerate(fltrs):
         ff = fltrs[i]
-        axsi = plt.subplot(gs[i*range_step])
+        axsi = plt.subplot(gs[i*range_step], sharex=old_axsi)
         calib_file = '{}/{}_{}.dat'.format(config.output_dir(),config.agn_name(),ff)
         df_orig = pd.read_csv(calib_file,
                               header=None,index_col=None,
@@ -624,8 +621,15 @@ def CalibrationOutlierPlot(model,select_period,fltr=None,add_model=False,overwri
         
         mjd = data[i][0]
         # X limits are three days either side of the calibrated datapoints
-        axsi.set_xlim(np.min(mjd)-3,np.max(mjd)+3)
-        axsi.set_xlim(np.min(mjd)-3,np.max(mjd)+3)
+        if i == 0:            
+            axsi.set_xlim(np.min(mjd)-3,np.max(mjd)+3)
+            if add_model:
+                axsi.set_title('{} {} calibration analysis for filter band {}'.format(config.agn(),select_period,fltr), pad=10.0)
+            else:
+                axsi.set_title('{} {} Calibrated light curves'.format(config.agn(),select_period), pad=10.0)
+
+        if i != len(fltrs)-1:
+            plt.setp(axsi.get_xticklabels(), visible=False)
         flux = data[i][1]
         # Y limits are 5% either side of the calibrated flux
         axsi.set_ylim(np.min(flux)*0.95,np.max(flux)*1.05)
