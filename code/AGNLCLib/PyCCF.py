@@ -1,4 +1,4 @@
-import sys
+import sys,os
 import argparse
 import numpy as np
 import pandas as pd
@@ -47,6 +47,8 @@ def PyCCF(model,fltr1,fltr2,overwrite=False):
     # lag range of data considered by year
     for period in params["periods"]:        
         centroidfile = '{}/Centroid_{}_{}_{}.dat'.format(config.output_dir(),period,fltr1,fltr2)
+        peakfile = '{}/Peak_{}_{}_{}.dat'.format(config.output_dir(),period,fltr1,fltr2)
+        ccffile = '{}/CCF_{}_{}_{}.dat'.format(config.output_dir(),period,fltr1,fltr2)
             
         #########################################
         ##Set Interpolation settings, user-specified
@@ -86,9 +88,6 @@ def PyCCF(model,fltr1,fltr2,overwrite=False):
                                                                                                                fltr1,fltr2,
                                                                                                                '{:.3f}'.format(median_cad1),
                                                                                                                '{:.3f}'.format(median_cad2),sig_level))
-        if (Utils.check_file(centroidfile) == True) and (overwrite == False):
-            print('Not running period {} {} vs {} calibration, file exists: {}'.format(period,fltr1,fltr2,centroidfile))
-            continue
 
         # Interpolation time step (days). Must be less than the average cadence of the observations, but too small will introduce noise.
         # Consider the lowest median cadence from both curves and round down to nearest 1/20 days,
@@ -96,7 +95,6 @@ def PyCCF(model,fltr1,fltr2,overwrite=False):
         interp = params["periods"][period].get("Interp_Period",
                                                np.minimum(np.floor(median_cad1*4.0)*0.05,
                                                           np.floor(median_cad2*4.0)*0.05))
-            
         
         nsim = params["MC_Iterations"]  #Number of Monte Carlo iterations for calculation of uncertainties
 
@@ -104,25 +102,61 @@ def PyCCF(model,fltr1,fltr2,overwrite=False):
         
         print('Using lag_range={} days, interp={} days, nsim={}, thres={}'.format(lag_range,'{:.2f}'.format(interp),nsim,thres))
 
-        # Do both FR/RSS sampling (1 = RSS only, 2 = FR only) 
-        mcmode = 0
+        if (Utils.check_file(centroidfile) == False) or (overwrite == True):
 
-        # Choose the threshold for considering a measurement "significant".
-        # sigmode = 0.2 will consider all CCFs with r_max <= 0.2 as "failed". See code for different sigmodes.
-        sigmode = 0.2  
+            # Do both FR/RSS sampling (1 = RSS only, 2 = FR only)
+            mcmode = 0
 
-        ##########################################
-        #Calculate lag with python CCF program
-        ##########################################
-        tlag_peak, status_peak, tlag_centroid, status_centroid, ccf_pack, max_rval, status_rval, pval = PYCCF.peakcent(mjd1,flux1,mjd2,flux2,
-                                                                                                                       lag_range[0],lag_range[1],interp,thres=thres)
-        tlags_peak, tlags_centroid, nsuccess_peak, nfail_peak, nsuccess_centroid, nfail_centroid, max_rvals, nfail_rvals, pvals = PYCCF.xcor_mc(mjd1,flux1,abs(err1),mjd2,flux2,abs(err2),
-                                                                                                                                                lag_range[0],lag_range[1],interp,thres=thres,
-                                                                                                                                                nsim=nsim,mcmode=mcmode,sigmode=sigmode)
+            # Choose the threshold for considering a measurement "significant".
+            # sigmode = 0.2 will consider all CCFs with r_max <= 0.2 as "failed". See code for different sigmodes.
+            sigmode = 0.2
+
+            ##########################################
+            #Calculate lag with python CCF program
+            ##########################################
+            tlag_peak, status_peak, tlag_centroid, status_centroid, ccf_pack, max_rval, status_rval, pval = PYCCF.peakcent(mjd1,flux1,mjd2,flux2,
+                                                                                                                           lag_range[0],lag_range[1],interp,thres=thres)
+            tlags_peak, tlags_centroid, nsuccess_peak, nfail_peak, nsuccess_centroid, nfail_centroid, max_rvals, nfail_rvals, pvals = PYCCF.xcor_mc(mjd1,flux1,abs(err1),mjd2,flux2,abs(err2),
+                                                                                                                                                    lag_range[0],lag_range[1],interp,thres=thres,
+                                                                                                                                                    nsim=nsim,mcmode=mcmode,sigmode=sigmode)
 
 
-        lag = ccf_pack[1]
-        r = ccf_pack[0]
+            lag = ccf_pack[1]
+            r = ccf_pack[0]
+
+            ##########################################
+            #Write results out to a file in case we want them later.
+            ##########################################
+
+            df = pd.DataFrame({'centroid':tlags_centroid,
+                               'peak':tlags_peak})
+            print('Writing {}'.format(centroidfile))
+            df['centroid'].to_csv(centroidfile,
+                                  header=False,sep=' ',float_format='%25.15e',index=False,
+                                  quoting=csv.QUOTE_NONE,escapechar=' ')
+            print('Writing {}'.format(peakfile))
+            df['peak'].to_csv(peakfile,
+                              header=False,sep=' ',float_format='%25.15e',index=False,
+                              quoting=csv.QUOTE_NONE,escapechar=' ')
+            df = pd.DataFrame({'lag':lag,
+                               'r':r})
+            print('Writing {}'.format(ccffile))
+            df.to_csv(ccffile,
+                      header=False,sep=' ',float_format='%25.15e',index=False,
+                      quoting=csv.QUOTE_NONE,escapechar=' ')
+        else:
+            print('Reading computation already available in {}'.format(centroidfile))
+            tlags_centroid = pd.read_csv(centroidfile,
+                                         header=None,index_col=None,
+                                         quoting=csv.QUOTE_NONE,delim_whitespace=True).to_numpy()
+            tlags_peak = pd.read_csv(peakfile,
+                                     header=None,index_col=None,
+                                     quoting=csv.QUOTE_NONE,delim_whitespace=True).to_numpy()
+
+            lag_r = pd.read_csv(ccffile,header=None,index_col=None,
+                                quoting=csv.QUOTE_NONE,delim_whitespace=True)
+            lag = lag_r[0].to_numpy()
+            r = lag_r[1].to_numpy()
 
         # Z-score of 1 (1 s.d. above mean in normal dist)
         perclim = 84.1344746    
@@ -139,31 +173,7 @@ def PyCCF(model,fltr1,fltr2,overwrite=False):
         peaktau_loerr = centau-(stats.scoreatpercentile(tlags_peak, (100.-perclim)))
         print('Peak, errors: %10.3f  (+%10.3f -%10.3f)'%(peaktau, peaktau_uperr, peaktau_loerr))
 
-        ##########################################
-        #Write results out to a file in case we want them later.
-        ##########################################
 
-        peakfile = '{}/Peak_{}_{}_{}.dat'.format(config.output_dir(),period,fltr1,fltr2)
-
-        ccffile = '{}/CCF_{}_{}_{}.dat'.format(config.output_dir(),period,fltr1,fltr2)
-        
-        df = pd.DataFrame({'centroid':tlags_centroid,
-                           'peak':tlags_peak})
-        print('Writing {}'.format(centroidfile))
-        df['centroid'].to_csv(centroidfile,
-                              header=False,sep=' ',float_format='%25.15e',index=False,
-                              quoting=csv.QUOTE_NONE,escapechar=' ')
-        print('Writing {}'.format(peakfile))
-        df['peak'].to_csv(peakfile,
-                              header=False,sep=' ',float_format='%25.15e',index=False,
-                              quoting=csv.QUOTE_NONE,escapechar=' ')
-        df = pd.DataFrame({'lag':lag,
-                           'r':r})
-        print('Writing {}'.format(ccffile))
-        df.to_csv(ccffile,
-                  header=False,sep=' ',float_format='%25.15e',index=False,
-                  quoting=csv.QUOTE_NONE,escapechar=' ')
-        
         ##########################################
         #Plot the Light curves, CCF, CCCD, and CCPD
         ##########################################
@@ -186,7 +196,7 @@ def PyCCF(model,fltr1,fltr2,overwrite=False):
         #Plot CCF Information
         ax2 = fig.add_subplot(3, 3, 7)
         ax2.set_ylabel('CCF r')
-        ax2.text(0.3, 0.75, 'CCF ', horizontalalignment = 'center', verticalalignment = 'center', transform = ax2.transAxes, fontsize = 10)
+        ax2.text(0.15, 0.85, 'CCF ', horizontalalignment = 'center', verticalalignment = 'center', transform = ax2.transAxes, fontsize = 10, color="red")
         ax2.set_ylim(0.0, 1.0)
         # only one line may be specified; full height
         ax2.axvline(x=0,color='gray')
@@ -197,21 +207,26 @@ def PyCCF(model,fltr1,fltr2,overwrite=False):
         ax3 = fig.add_subplot(3, 3, 8)
         ax3.axes.get_yaxis().set_ticks([])
         ax3.set_xlabel('MJD lag')
-        ax3.text(0.3, 0.75, 'CCCD ', horizontalalignment = 'center', verticalalignment = 'center', transform = ax3.transAxes, fontsize = 10)
+        ax3.text(0.2, 0.85, 'CCCD ', horizontalalignment = 'center', verticalalignment = 'center', transform = ax3.transAxes, fontsize = 10, color="red")
         n, bins, etc = ax3.hist(tlags_centroid, bins = 50, color = 'b')
         ax3.axvline(x=0,color = 'gray')
 
         ax4 = fig.add_subplot(3, 3, 9, sharex = ax3)
-        ax4.set_ylabel('freq')
-        ax4.yaxis.tick_right()
+        #ax4.set_ylabel('freq')
+        #ax4.yaxis.tick_right()
+        ax4.set_yticks([])
         ax4.yaxis.set_label_position('right') 
-        ax4.text(0.3, 0.75, 'CCPD ', horizontalalignment = 'center', verticalalignment = 'center', transform = ax4.transAxes, fontsize = 10)
+        ax4.text(0.2, 0.85, 'CCPD ', horizontalalignment = 'center', verticalalignment = 'center', transform = ax4.transAxes, fontsize = 10, color="red")
         ax4.hist(tlags_peak, bins = bins, color = 'b')
         ax4.axvline(x = 0,color = 'gray')
 
         plotccf = '{}/CCFResultsPlot_{}_{}_{}.pdf'.format(config.output_dir(),period,fltr1,fltr2)
-        
-        plt.savefig(plotccf)#, format = 'png', orientation = 'landscape', bbox_inches = 'tight')
+
+        if (os.path.exists(plotccf) == True) and (overwrite == False):
+            print('Not writing PyCCF plot, file exists: {}'.format(plotccf))
+        else:
+            print('Writing PyCCF plot {}'.format(plotccf))
+            plt.savefig(plotccf)
         if matplotlib.get_backend() == 'TkAgg':
             plt.show()
         else:
