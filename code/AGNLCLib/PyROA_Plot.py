@@ -399,8 +399,8 @@ def FitPlot(model,select_period,overwrite=False,noprint=True):
                 print('No CCF data available for plot at {}'.format(centroidfile))
         ccf_data.append(tlags_centroid)
 
-    tau_min = np.maximum(tau_min,-2.0)
-    tau_max = np.minimum(tau_max,2.0)
+    tau_min = np.maximum(tau_min,-5.0)
+    tau_max = np.minimum(tau_max,5.0)
 
     main_handles = []
     main_labels = []
