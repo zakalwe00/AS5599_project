@@ -460,7 +460,7 @@ def FitPlot(model,select_period,overwrite=False,noprint=True):
         # calculate residuals 
         interp = interpolate.interp1d(t, m, kind="linear", fill_value="extrapolate")
         interpmodel = interp(mjd)
-        residuals = interpmodel - flux
+        residuals = flux - interpmodel
         # normalise residuals
         residual_mean = np.mean(residuals)
         residual_rms = np.std(residuals)
@@ -475,9 +475,9 @@ def FitPlot(model,select_period,overwrite=False,noprint=True):
         tau_samples = samples_chunks[i+1][2]
         roa_tau = np.percentile(tau_samples, [16, 50, 84])        
         dist_label = r'$\tau$'
-        dist_label = dist_label + r'$_{'+fltrs[i]+r'}$ ROA dist'+'\n{:3.2f} (+{:3.2f},-{:3.2})'.format(roa_tau[1],
-                                                                                                       roa_tau[0]-roa_tau[1],
-                                                                                                       roa_tau[2]-roa_tau[1])
+        dist_label = dist_label + r'$_{'+fltrs[i]+r'}$ ROA dist'+'\n{:4.3f} (+{:4.3f},-{:4.3f})'.format(roa_tau[1],
+                                                                                                        roa_tau[0]-roa_tau[1],
+                                                                                                        roa_tau[2]-roa_tau[1])
         ax1.hist(tau_samples, color=band_colors[i], bins=50, label=dist_label)
         ax1.axvline(x = roa_tau[1], color="black",lw=0.5)
         ax1.axvline(x = roa_tau[0] , color="black", ls="--",lw=0.5)
