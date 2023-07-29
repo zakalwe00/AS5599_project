@@ -83,7 +83,10 @@ Available functions are {}".format(','.join([xx for xx in FUNCTION_MAPPING.keys(
             for ppc in pc:
                 new_period_map[ppc] = old_period_map[ppc]
             model.config().observation_params()['periods'] = new_period_map
-            function(model,*function_args)        
+            function(model,*function_args)
+    elif fargs[0] == 'calibrate_plot':
+        function(model,*function_args)
+        function(model,*function_args,show_clipped=True)
     else:
         # run function
         function(model,*function_args)

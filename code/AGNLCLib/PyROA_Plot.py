@@ -549,7 +549,7 @@ def FitPlot(model,select_period,overwrite=False,noprint=True):
         plt.close()
 
 
-def CalibrationOutlierPlot(model,select_period,fltr=None,add_model=False,overwrite=False,noprint=True,delta=None):
+def CalibrationOutlierPlot(model,select_period,fltr=None,add_model=False,show_clipped=False,overwrite=False,noprint=True,delta=None):
 
     config = model.config()
     fltrs = config.fltrs()
@@ -567,7 +567,10 @@ def CalibrationOutlierPlot(model,select_period,fltr=None,add_model=False,overwri
     if add_model:
         calib_curve_plot = '{}/Calibrated_LCs_Model_{}{}.pdf'.format(config.output_dir(),select_period,fltr_ext)
     else:
-        calib_curve_plot = '{}/Calibrated_LCs_{}{}.pdf'.format(config.output_dir(),select_period,fltr_ext)
+        if show_clipped == True:
+            calib_curve_plot = '{}/Calibrated_LCs_{}{}_clipped.pdf'.format(config.output_dir(),select_period,fltr_ext)
+        else:
+            calib_curve_plot = '{}/Calibrated_LCs_{}{}.pdf'.format(config.output_dir(),select_period,fltr_ext)
 
     data=[]
     plt.style.use(['seaborn'])
@@ -591,10 +594,13 @@ def CalibrationOutlierPlot(model,select_period,fltr=None,add_model=False,overwri
         range_step = 1
 
     remove_outliers = []
-    old_axsi = None
+    axsi_zero = None
     for i,ff in enumerate(fltrs):
         ff = fltrs[i]
-        axsi = plt.subplot(gs[i*range_step], sharex=old_axsi)
+        if i != 0:
+            axsi = plt.subplot(gs[i*range_step], sharex=axsi_zero)
+        else:
+            axsi = plt.subplot(gs[i*range_step])
         calib_file = '{}/{}_{}.dat'.format(config.output_dir(),config.agn_name(),ff)
         df_orig = pd.read_csv(calib_file,
                               header=None,index_col=None,
@@ -614,8 +620,9 @@ def CalibrationOutlierPlot(model,select_period,fltr=None,add_model=False,overwri
         else:
             #for displaying all curves together, remove soft sigma clipped points
             #and any with particularly large error bars
-            df = df[df[7] == False]
-            df = Utils.filter_large_sigma(df,config.calibration_params()['sig_level'],ff,noprint=noprint)
+            if show_clipped == False:
+                df = df[df[7] == False]
+                df = Utils.filter_large_sigma(df,config.calibration_params()['sig_level'],ff,noprint=noprint)
 
         data.append(df)
         
@@ -623,6 +630,7 @@ def CalibrationOutlierPlot(model,select_period,fltr=None,add_model=False,overwri
         # X limits are three days either side of the calibrated datapoints
         if i == 0:            
             axsi.set_xlim(np.min(mjd)-3,np.max(mjd)+3)
+            axsi_zero = axsi
             if add_model:
                 axsi.set_title('{} {} calibration analysis for filter band {}'.format(config.agn(),select_period,fltr), pad=10.0)
             else:
@@ -634,6 +642,7 @@ def CalibrationOutlierPlot(model,select_period,fltr=None,add_model=False,overwri
         # Y limits are 5% either side of the calibrated flux
         axsi.set_ylim(np.min(flux)*0.95,np.max(flux)*1.05)
         err = data[i][2]
+        clipped = data[i][7]
         if add_model:
             #Here we find influential outliers on the basis that some will crop up in periods with low point density
             #1) Get a blurred roa model using a 3 times Delta (if given) or 3x the median cadence window
@@ -669,7 +678,11 @@ def CalibrationOutlierPlot(model,select_period,fltr=None,add_model=False,overwri
                 print(remove_outliers)
                 #save *.dat aside with outliers removed
                 model.remove_fltr_outliers(fltr,remove_outliers)
-        axsi.errorbar(mjd, flux , yerr=err, ls='none', marker=".", ms=3.5, elinewidth=0.5,color="blue",label="Calibrated flux")
+        if add_model == False and show_clipped:
+            axsi.errorbar(mjd[clipped == False], flux[clipped == False] , yerr=err[clipped == False], ls='none', marker=".", ms=3.5, elinewidth=0.5,color="blue",label="Calibrated flux")
+            axsi.errorbar(mjd[clipped], flux[clipped] , yerr=err[clipped], ls='none', marker=".", ms=3.5, elinewidth=0.5,color="red",label="Calibrated flux")
+        else:
+            axsi.errorbar(mjd, flux , yerr=err, ls='none', marker=".", ms=3.5, elinewidth=0.5,color="blue",label="Calibrated flux")
         if add_model:
             axsi.errorbar(mjd[prm], flux[prm], yerr=err[prm], ls='none', marker=".", ms=3.5, elinewidth=0.5,color="red",label="Outliers for removal")
             axsi.plot(blurred_roa_model[0],blurred_roa_model[1]*1.25,ls='dashed',color="red",label="ROA flux model (delta=8*{}) + 25%\n(under 25% outliers permitted)".format(delta))
