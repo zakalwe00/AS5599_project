@@ -10,6 +10,9 @@
     "calibration": {
 	"constrain_dates": [58270,58543]
     },
+    "CCF": {
+	"Centroid_Threshold": 0.95
+    },
     "ROA": {
 	"redshift": 0.04702,
 	"init_tau": {
