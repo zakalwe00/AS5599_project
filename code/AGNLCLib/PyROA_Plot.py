@@ -497,7 +497,7 @@ def FitPlot(model,select_period,overwrite=False,noprint=True):
             ax1.hist(ccf_data[i], bins = 50, color = 'grey', alpha=0.5, label=r'$\tau_{CCF}$ CCCD')
         
         if i == ilast:
-            ax0_resid.set_xlabel("Time")
+            ax0_resid.set_xlabel('Time (days, MJD)')
             ax0_resid.label_outer()
             handles, labels = ax0.get_legend_handles_labels()
             main_handles = main_handles + [handles[1],handles[0]]
@@ -1424,7 +1424,7 @@ def LagSpectrum(model,select_period,overwrite=False):
     fig = plt.figure(figsize=(10,7))
     ax = fig.add_subplot(111)
 
-    plt.axhline(y=0,ls='--',alpha=0.5,)
+    plt.axhline(y=0,ls='--',alpha=0.5,color="black")
 
     if band_colors == None: band_colors = 'k'*7
 
@@ -1443,14 +1443,17 @@ def LagSpectrum(model,select_period,overwrite=False):
     
     wvs = np.linspace(lambda_i[0]-300,lambda_i[-1]+300,1000)
     taus = tau_func(wvs,*popt)
+    taus_plus_err = tau_func(wvs,*(popt+perr))
+    taus_minus_err = tau_func(wvs,*(popt-perr))
     
     mm = 0
     for i in range(lag.size):
         plt.errorbar(lambda_i[i],tau[i],
                      yerr=tau_err[i],xerr=fwhm_err[i],marker='o',
                      color=band_colors[i])
-        plt.plot(wvs,taus,ls='dashed')
-
+        plt.plot(wvs,taus,ls='dashed',color="mediumvioletred")
+        plt.fill_between(wvs, taus_plus_err, taus_minus_err, alpha=0.5, color="thistle")
+        
     if redshift > 0:
         plt.xlabel(r'Rest Wavelength ($\mathrm{\AA}$)')
         plt.ylabel(r'$\tau_{\rm ROA}$ (day)')
