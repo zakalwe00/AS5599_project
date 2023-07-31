@@ -40,8 +40,8 @@ FUNCTION_MAPPING = {
 
 # Uses PYCCF code adapted from https://bitbucket.org/cgrier/python_ccf_code/src/master/
 # installed on turgon but not AWS
-if is_turgon:
-    FUNCTION_MAPPING['ccf'] = AGNLCLib.PyCCF
+#if is_turgon:
+FUNCTION_MAPPING['ccf'] = AGNLCLib.PyCCF
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
