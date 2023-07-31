@@ -150,7 +150,7 @@ def InterCalibratePlot(model,fltr,select='A',corner_plot=True,overwrite=False,ma
     plt.rcParams.update({
         "font.family": "Sans", 
         "font.serif": ["DejaVu"],
-        "figure.figsize":[20,10],
+        "figure.figsize":[10,8],
         "font.size": 14})
     period_to_mjd_range = config.observation_params()['periods']
     #    fig, axs = plt.subplots(2*len(period_to_mjd_range.keys()))
@@ -584,7 +584,7 @@ def CalibrationOutlierPlot(model,select_period,fltr=None,add_model=False,show_cl
     plt.rcParams.update({
         "font.family": "Sans",  
         "font.serif": ["DejaVu"],
-        "figure.figsize":[18,7.5],
+        "figure.figsize":[16,6.5],
         "font.size": 14})
     if add_model is False:
         plt.rcParams.update({"figure.figsize":[8,6]})
