@@ -12,6 +12,7 @@ import pickle
 import matplotlib.ticker as mtick
 import matplotlib.ticker as ticker
 import astropy.units as u
+import scipy
 import matplotlib
 import matplotlib.pyplot as plt
 from matplotlib import gridspec
@@ -382,21 +383,21 @@ def FitPlot(model,select_period,overwrite=False,noprint=True):
             
         mjd_min = np.minimum(np.min(df_to_numpy[:,0]), mjd_min)
         mjd_max = np.maximum(np.max(df_to_numpy[:,0]), mjd_max)
+        mjd_margin = int(0.05*(mjd_max - mjd_min))
         data.append(df_to_numpy)
 
         tlags_centroid = None
-        if i > 0:
-            centroidfile = '{}/Centroid_{}_{}_{}.dat'.format(config.output_dir(),select_period,delay_ref,fltr)
-            if (Utils.check_file(centroidfile) == True):
-                df = pd.read_csv(centroidfile,
-                                 header=None,index_col=None,
-                                 quoting=csv.QUOTE_NONE,
-                                 delim_whitespace=True)
-                tlags_centroid = df[0].to_numpy()
-                tau_min = np.minimum(np.min(tlags_centroid), tau_min)
-                tau_max = np.maximum(np.max(tlags_centroid), tau_max)
-            else:
-                print('No CCF data available for plot at {}'.format(centroidfile))
+        centroidfile = '{}/Centroid_{}_{}_{}.dat'.format(config.output_dir(),select_period,delay_ref,fltr)
+        if (Utils.check_file(centroidfile) == True):
+            df = pd.read_csv(centroidfile,
+                             header=None,index_col=None,
+                             quoting=csv.QUOTE_NONE,
+                             delim_whitespace=True)
+            tlags_centroid = df[0].to_numpy()
+            tau_min = np.minimum(np.min(tlags_centroid), tau_min)
+            tau_max = np.maximum(np.max(tlags_centroid), tau_max)
+        else:
+            print('No CCF data available for plot at {}'.format(centroidfile))
         ccf_data.append(tlags_centroid)
 
     tau_min = np.maximum(tau_min,-5.0)
@@ -452,8 +453,8 @@ def FitPlot(model,select_period,overwrite=False,noprint=True):
         ax0.plot(t,m, color="black", lw=1, label='ROA Model')
         ax0.fill_between(t, m+errs, m-errs, alpha=0.5, color="black")
         ax0.set_ylabel("Flux (mJy)",rotation=0,labelpad=40)
-        ax0.text(0.025, 0.055, '{}'.format(fltr), fontsize = 14, transform = ax0.transAxes, color=band_colors[i])
-        ax0.set_xlim(mjd_min,mjd_max)
+        ax0.text(0.014, 0.050, '{}'.format(fltr), fontsize = 14, transform = ax0.transAxes, color=band_colors[i])
+        ax0.set_xlim(mjd_min-mjd_margin,mjd_max+mjd_margin)
         flux_margin = (np.max(flux) - np.min(flux))*0.15
         ax0.set_ylim(np.min(flux)-flux_margin,np.max(flux)+flux_margin)
         
@@ -467,6 +468,7 @@ def FitPlot(model,select_period,overwrite=False,noprint=True):
         residuals = (residuals - residual_mean)/residual_rms
         ax0_resid.plot(mjd,residuals, ls='none', marker='.', ms=0.75, color='#1f77b4',label='Residuals')
         ax0_resid.axhline(y = 0.0, color="black", ls="--",lw=0.5)
+        ax0.set_xlim(mjd_min-mjd_margin,mjd_max+mjd_margin)
         #ax0_resid.set_ylabel("Residuals",rotation=0,labelpad=30)
         ax1_resid.hist(residuals, orientation="horizontal", color='#1f77b4')
         ax1_resid.axhline(y = 0.0, color="black", ls="--",lw=0.5)
@@ -484,7 +486,12 @@ def FitPlot(model,select_period,overwrite=False,noprint=True):
         ax1.axvline(x = roa_tau[2], color="black",ls="--",lw=0.5)
         ax1.axvline(x = 0, color="black",ls="--")    
         ax1.yaxis.set_tick_params(labelleft=False)
-        ax1.set_xlim(tau_min,tau_max)
+        x_range = roa_params['tau_plot_limits']
+        x_ticks = [xx for xx in range(int(x_range[0]),int(x_range[1]))]
+        ax1.set_xticks(x_ticks)
+        #ax1.set_xlim(tau_min,tau_max)
+        ax1.set_xlim(x_range[0],x_range[1])
+        ax1.tick_params(axis="x",direction="in")
         
         if ccf_data[i] is not None:
             ax1.hist(ccf_data[i], bins = 50, color = 'grey', alpha=0.5, label=r'$\tau_{CCF}$ CCCD')
@@ -1244,7 +1251,7 @@ def FluxFlux(model,select_period,overwrite=False):
     plt.ylabel(ylab)
     plt.tight_layout()
 
-    output_file = '{}/pyroa_fluxflux{}.pdf'.format(config.output_dir(),add_ext)
+    output_file = '{}/ROA_fluxflux{}.pdf'.format(config.output_dir(),add_ext)
     if (os.path.exists(output_file) == True) and (overwrite == False):
         print('Not writing pyroa fluxflux plot, file exists: {}'.format(output_file))
     else:
@@ -1304,7 +1311,7 @@ def FluxFlux(model,select_period,overwrite=False):
     ax.xaxis.set_minor_locator(ticker.MultipleLocator(2000))
     plt.tight_layout()
 
-    output_file = '{}/pyroa_SED{}.pdf'.format(config.output_dir(),add_ext)
+    output_file = '{}/ROA_SED{}.pdf'.format(config.output_dir(),add_ext)
     if (os.path.exists(output_file) == True) and (overwrite == False):
         print('Not writing pyroa SED plot, file exists: {}'.format(output_file))
     else:
@@ -1334,7 +1341,7 @@ def FluxFlux(model,select_period,overwrite=False):
     	'unred_gal_err': np.array(Utils.unred(wave,gal_spectrum_err,0.027))}
     df = pd.DataFrame(data=d)
 
-    output_file = '{}/pyroa_fluxflux{}.csv'.format(config.output_dir(),add_ext)
+    output_file = '{}/ROA_fluxflux{}.csv'.format(config.output_dir(),add_ext)
     if (os.path.exists(output_file) == True) and (overwrite == False):
         print('Not writing pyroa fluxflux data, file exists: {}'.format(output_file))
     else:
@@ -1358,9 +1365,12 @@ def LagSpectrum(model,select_period,overwrite=False):
     redshift = roa_params["redshift"]
     wavelengths = roa_params["wavelengths"]
     wavelengths = [wavelengths[fltr] for fltr in fltrs]
+    FWHM = roa_params["FWHM"]
+    FWHM = [FWHM[fltr] for fltr in fltrs]
     band_colors = roa_params["band_colors"]
     band_colors = [band_colors[fltr] for fltr in fltrs]
 
+    
     fltrs = [delay_ref] + fltrs
     
     add_ext = '_{}_{}'.format(roa_params['model'],select_period)
@@ -1418,11 +1428,28 @@ def LagSpectrum(model,select_period,overwrite=False):
 
     if band_colors == None: band_colors = 'k'*7
 
+    lambda_0 = roa_params["wavelengths"][delay_ref]/(1+redshift)
+    lambda_i = np.array(wavelengths)/(1+redshift)
+    tau = lag/(1+redshift)
+    tau_err = lag_m/(1+redshift)
+    fwhm_err = np.array(FWHM)/2.0
+    def tau_func(l_i,tau_0):
+        return tau_0*((l_i/lambda_0)**(4/3) - 1)
+        
+    popt, pcov = scipy.optimize.curve_fit(tau_func,lambda_i,tau,p0=[(1.0/3.0)],sigma=lag_m)
+    perr = np.sqrt(np.diag(pcov))
+
+    print('Estimate tau_0={:4.3f} err={:4.3f}'.format(popt[0],perr[0]))
+    
+    wvs = np.linspace(lambda_i[0]-300,lambda_i[-1]+300,1000)
+    taus = tau_func(wvs,*popt)
+    
     mm = 0
     for i in range(lag.size):
-        plt.errorbar(wavelengths[i]/(1+redshift),lag[i]/(1+redshift),
-                     yerr=lag_m[i],marker='o',
+        plt.errorbar(lambda_i[i],tau[i],
+                     yerr=tau_err[i],xerr=fwhm_err[i],marker='o',
                      color=band_colors[i])
+        plt.plot(wvs,taus,ls='dashed')
 
     if redshift > 0:
         plt.xlabel(r'Rest Wavelength ($\mathrm{\AA}$)')
@@ -1432,7 +1459,7 @@ def LagSpectrum(model,select_period,overwrite=False):
         plt.ylabel(r'$\tau$ (day)')
 
     plt.title('{} {} Lag Spectrum'.format(config.agn(),select_period))
-    output_file = '{}/pyroa_lagspectrum{}.pdf'.format(config.output_dir(),add_ext)
+    output_file = '{}/ROA_lagspectrum{}.pdf'.format(config.output_dir(),add_ext)
     if (os.path.exists(output_file) == True) and (overwrite == False):
         print('Not writing pyroa lag spectrum plot, file exists: {}'.format(output_file))
     else:

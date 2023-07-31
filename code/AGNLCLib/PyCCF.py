@@ -43,6 +43,8 @@ def PyCCF(model,fltr1,fltr2,overwrite=False):
     # (i.e., if the light curves span 80 days, these values must be less than 80 days).
     # Update: match the tau prior from the ROA for cleanliness. These should be the same.
     lag_range = config.roa_params()["tau_prior"]
+    if params.get("tau_prior_override", None) is not None:
+        lag_range = params["tau_prior_override"]
     
     # lag range of data considered by year
     for period in params["periods"]:        
