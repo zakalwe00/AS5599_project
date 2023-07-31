@@ -8,10 +8,10 @@ from .PyROA import InterCalibrateFilt,Fit
 
 from .PyROA_Plot import InterCalibratePlot,CalibrationSNR,CalibrationOutlierPlot,FitPlot,ConvergencePlot,ChainsPlot,CornerPlot,ScopeRawPlot,FluxFlux,LagSpectrum
 
-import socket
-is_turgon = socket.gethostname() == 'turgon'
-if is_turgon:
-    from .PyCCF import PyCCF
+#import socket
+#is_turgon = socket.gethostname() == 'turgon'
+#if is_turgon:
+from .PyCCF import PyCCF
 
 
 
