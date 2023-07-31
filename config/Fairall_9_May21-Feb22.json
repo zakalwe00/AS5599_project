@@ -10,6 +10,10 @@
     "calibration": {
 	"constrain_dates": [59335,59590]
     },
+    "CCF": {
+	"MC_Iterations": 10000,
+	"tau_prior_override": [-20.0,20.0]
+    },
     "ROA": {
 	"redshift": 0.04702,
 	"init_tau": {
