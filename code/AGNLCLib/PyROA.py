@@ -106,7 +106,6 @@ def InterCalibrateFilt(model,fltr,overwrite=False):
 
     if Utils.check_file(output_file) == True and overwrite==False:
         print('Not running filter {} calibration, file exists: {}'.format(fltr, output_file))
-        return
 
     ########################################################################################    
     # No calibration data for this filter exists
@@ -256,23 +255,24 @@ def InterCalibrateFilt(model,fltr,overwrite=False):
     print(error_j1.shape)
 
     print(" >>>>> DELTA <<<<< ",delta)
-        
-    # Put all arrays in a pandas dataframe and export
-    df = pd.DataFrame({
-        'f1':Calibrated_mjd,
-        'f2':Calibrated_flux,
-        'f3':Calibrated_err,
-        'str1':scopes_array,
-        'f4':Porc,
-        'f5':interpmodel_j1,
-        'f6':error_j1,
-        'b1':CCF_clip
-    }).sort_values('f1')
-    df.to_csv(output_file,
-              header=False,sep=' ',float_format='%25.15e',index=False,
-              quoting=csv.QUOTE_NONE,escapechar=' ')
 
-    if Utils.check_file('{}/{}_calib_samples.obj'.format(config.output_dir(),fltr)) == False:
+    if Utils.check_file(output_file) == False or overwrite==True:
+        # Put all arrays in a pandas dataframe and export
+        df = pd.DataFrame({
+            'f1':Calibrated_mjd,
+            'f2':Calibrated_flux,
+            'f3':Calibrated_err,
+            'str1':scopes_array,
+            'f4':Porc,
+            'f5':interpmodel_j1,
+            'f6':error_j1,
+            'b1':CCF_clip
+        }).sort_values('f1')
+        df.to_csv(output_file,
+                  header=False,sep=' ',float_format='%25.15e',index=False,
+                  quoting=csv.QUOTE_NONE,escapechar=' ')
+
+    if Utils.check_file('{}/{}_calib_samples.obj'.format(config.output_dir(),fltr)) == False or overwrite==True:
         # write out the calibration data if not already available
         filehandler = open('{}/{}_calib_samples_flat.obj'.format(config.output_dir(),fltr),"wb")
         pickle.dump(samples_flat,filehandler)
@@ -350,11 +350,6 @@ def Fit(model, select_period, overwrite=False):
     mjd_range = config.observation_params()['periods'][select_period]['mjd_range']
     add_ext = add_ext + '_{}'.format(select_period)
 
-    output_file = '{}/samples_flat{}.obj'.format(config.output_dir(),add_ext)
-    if Utils.check_file(output_file) == True and overwrite==False:
-        print('Not running ROA Fit, file exists: {}'.format(output_file))
-        return
-    
     data = []
     for fltr in fltrs:
         calib_file = '{}/{}_{}.dat'.format(config.output_dir(),config.agn_name(),fltr)
@@ -576,10 +571,15 @@ def Fit(model, select_period, overwrite=False):
         #    s[0] = np.prod(v.shape[:2])
         #    return v.reshape(s)
         #return v
-        samples_flat = samples[Nburnin + 14 ::15]
-        ss = list(samples_flat.shape[1:])
-        ss[0] = np.prod(samples_flat.shape[:2])
-        samples_flat = samples_flat.reshape(ss)
+        samples_flat_file = '{}/samples_flat{}.obj'.format(config.output_dir(),add_ext)
+        if Utils.check_file(samples_flat_file) == True:
+            filehandler = open(samples_flat_file,"rb")
+            samples_flat = pickle.load(filehandler)
+        else:
+            samples_flat = samples[Nburnin + 14 ::15]
+            ss = list(samples_flat.shape[1:])
+            ss[0] = np.prod(samples_flat.shape[:2])
+            samples_flat = samples_flat.reshape(ss)
     else:    
         with Pool(roa_params['Nparallel']) as pool:
 
@@ -852,24 +852,31 @@ def Fit(model, select_period, overwrite=False):
     print('')
     print('Best Fit Parameters')
     print(tabulate([params], headers=labels))
-    
-    #Write samples to file
-    filehandler = open('{}/samples_flat{}.obj'.format(config.output_dir(),add_ext),"wb")
-    pickle.dump(samples_flat,filehandler)
-    filehandler = open('{}/samples{}.obj'.format(config.output_dir(),add_ext),"wb")
-    pickle.dump(samples,filehandler)
 
-    filehandler = open('{}/labels{}.obj'.format(config.output_dir(),add_ext),"wb")
-    pickle.dump(labels,filehandler)
-
-    filehandler = open('{}/X_t{}.obj'.format(config.output_dir(),add_ext),"wb")
-    pickle.dump([t, m, errs],filehandler)
-    if (include_slow_comp==True):      
-        filehandler = open('{}/Slow_comps{}.obj'.format(config.output_dir(),add_ext),"wb")
-        pickle.dump(slow_comps_out,filehandler)
+    if Utils.check_file(samples_file) == False:
+        #Write samples to file
+        filehandler = open('{}/samples_flat{}.obj'.format(config.output_dir(),add_ext),"wb")
+        print('Writing {}'.format('{}/samples_flat{}.obj'.format(config.output_dir(),add_ext)))
+        pickle.dump(samples_flat,filehandler)
+        filehandler = open('{}/samples{}.obj'.format(config.output_dir(),add_ext),"wb")
+        print('Writing {}'.format('{}/samples{}.obj'.format(config.output_dir(),add_ext)))
+        pickle.dump(samples,filehandler)
         
-    filehandler = open('{}/Lightcurves_models{}.obj'.format(config.output_dir(),add_ext),"wb")
-    pickle.dump(models,filehandler)
+        filehandler = open('{}/labels{}.obj'.format(config.output_dir(),add_ext),"wb")
+        print('Writing {}'.format('{}/labels{}.obj'.format(config.output_dir(),add_ext)))
+        pickle.dump(labels,filehandler)
+        
+        filehandler = open('{}/X_t{}.obj'.format(config.output_dir(),add_ext),"wb")
+        print('Writing {}'.format('{}/X_t{}.obj'.format(config.output_dir(),add_ext)))
+        pickle.dump([t, m, errs],filehandler)
+        if (include_slow_comp==True):
+            print('Writing {}'.format('{}/Slow_comps{}.obj'.format(config.output_dir(),add_ext)))
+            filehandler = open('{}/Slow_comps{}.obj'.format(config.output_dir(),add_ext),"wb")
+            pickle.dump(slow_comps_out,filehandler)
+        
+        filehandler = open('{}/Lightcurves_models{}.obj'.format(config.output_dir(),add_ext),"wb")
+        print('Writing {}'.format('{}/Lightcurves_models{}.obj'.format(config.output_dir(),add_ext)))
+        pickle.dump(models,filehandler)
     
     return
 

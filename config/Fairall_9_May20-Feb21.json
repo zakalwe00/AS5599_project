@@ -11,8 +11,8 @@
 	"constrain_dates": [58970,59274]
     },
     "CCF": {
-	"MC_Iterations": 10000,
-	"tau_prior_override": [-20.0,20.0]
+	"MC_Iterations": 20000,
+	"tau_prior_override": [-40.0,40.0]
     },
     "ROA": {
 	"redshift": 0.04702,
@@ -25,6 +25,6 @@
 	    "i": 1.0,
 	    "z": 2.0
 	},
-	"tau_plot_limits": [-1,3]
+	"tau_plot_limits": [-3,9]
     }
 }

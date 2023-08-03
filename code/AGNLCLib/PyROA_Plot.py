@@ -150,7 +150,7 @@ def InterCalibratePlot(model,fltr,select='A',corner_plot=True,overwrite=False,ma
     plt.rcParams.update({
         "font.family": "Sans", 
         "font.serif": ["DejaVu"],
-        "figure.figsize":[10,8],
+        "figure.figsize":[16,6.5],
         "font.size": 14})
     period_to_mjd_range = config.observation_params()['periods']
     #    fig, axs = plt.subplots(2*len(period_to_mjd_range.keys()))
@@ -702,7 +702,7 @@ def CalibrationOutlierPlot(model,select_period,fltr=None,add_model=False,show_cl
             axsi.plot(model_mjd, model_flux, color="grey", label="ROA calibration flux model (delta={})".format(delta), alpha=0.5)
             axsi.fill_between(model_mjd, model_flux+model_err, model_flux-model_err, alpha=0.5, color="grey")
             axsi.legend()
-            axsi = plt.subplot(gs[i*range_step+1])
+            axsi = plt.subplot(gs[i*range_step+1],sharex=axsi)
             axsi.plot(density_model[0], density_model_norm, color="black", label="ROA window weights sum\n(normalised)",lw=0.5)
             axsi.axhline(y = 0.0, color="black", lw=0.5, ls="dashed")
             axsi.axhline(y = 0.5, lw=0.5, ls="dashed",color="red", label="ROA window weight = 0.5\n(over 0.5 outliers permitted)")
@@ -1348,7 +1348,7 @@ def FluxFlux(model,select_period,overwrite=False):
         print('Writing pyroa fluxflux data {}'.format(output_file))
         df.to_csv(output_file,index=False)
 
-def LagSpectrum(model,select_period,overwrite=False):
+def LagSpectrum(model,select_period,add_ccf=True,overwrite=False):
 
     config = model.config()
     roa_params = config.roa_params()
