@@ -32,12 +32,12 @@ project
     │   Fairall_9_May21-Feb22.json
     │   Fairall_9_May22-Feb23.json
 ```
-[!NOTE]
-The `AGNLCLib` library in this project contain functions directly copied from [PyROA (Git)] (heavily edited to fit the configuration framework). These functions form the core of the Running Optimal Average (ROA) calibration, analysis and plotting. Their inclusion here is for experimental and learning purposes only, and should not be taken for the authors own work.
+> [!NOTE]
+> The `AGNLCLib` library in this project contain functions directly copied from [PyROA (Git)] (heavily edited to fit the configuration framework). These functions form the core of the Running Optimal Average (ROA) calibration, analysis and plotting. Their inclusion here is for experimental and learning purposes only, and should not be taken for the authors own work.
+> Additionally, to run the `CCF=1` switch mentioned below for the cross-correlation function requires the [PyCCF (bitbucket)] library to be installed in the users `PYTHONPATH`. Example code from this library is also incorporated in the `AGNLCLib\PyCCF.py` module.
 
-Additionally, to run the `CCF=1` switch mentioned below for the cross-correlation function requires the [PyCCF (bitbucket)] library to be installed in the users `PYTHONPATH`. Example code from this library is also incorporated in the `AGNLCLib\PyCCF.py` module.
+## Steps to run the calibration and analysis:
 
-##Steps to run the calibration and analysis:
  - Set up git repository on linux in `$HOME/git/AS5599_project` and select an `AGN` to run the analysis for. Available `JSON` configurations include those in the `config`1 directory above. The observing year is encoded into the `AGN` name as we found the calibration could drift year-on-year.
  - Populate the LCO csv file from AVA (eg) 
 ```$HOME/git/AS5599_project/Fairall_9_Jun18-Feb19/LCO/AVA_Fairall_9_lco.csv```
@@ -63,9 +63,12 @@ The commands take a significantly long time to run (~8h each for calibration of 
 user@server:~/git/AS5599_project/Fairall_9_Jun18-Feb19$ AGN=Fairall_9_Jun18-Feb19 CALIBRATE=1 $HOME/git/AS5599_project/code/launcher.sh 2>&1|cat > pipeline_runs.20230803.log &
 user@server:~/git/AS5599_project$ disown
 ```
-###Testing calibration
+### Testing calibration
+
 After calibrating the first time the script `test_calibration.py` outputs a calibration analysis graph and and the dataset SNR. You are advised to look at this and consider whether any outlier observations are influencial to the fit as well as (optionally) removing these from the dataset.
-###Log files
+
+### Log files
+
 The `launcher.sh` script sets up a temporary log file in the output directory to allow individual stages of the pipeline to be monitored.
 
 
