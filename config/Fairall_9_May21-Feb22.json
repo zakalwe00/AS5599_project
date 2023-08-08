@@ -25,6 +25,6 @@
 	    "i": 1.0,
 	    "z": 2.0
 	},
-	"tau_plot_limits": [-1,7]
+	"tau_plot_limits": [-1,9]
     }
 }

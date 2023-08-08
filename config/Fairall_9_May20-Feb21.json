@@ -12,7 +12,7 @@
     },
     "CCF": {
 	"MC_Iterations": 20000,
-	"tau_prior_override": [-40.0,40.0]
+	"tau_prior_override": [-45.0,45.0]
     },
     "ROA": {
 	"redshift": 0.04702,
@@ -25,6 +25,6 @@
 	    "i": 1.0,
 	    "z": 2.0
 	},
-	"tau_plot_limits": [-3,9]
+	"tau_plot_limits": [-3,15]
     }
 }

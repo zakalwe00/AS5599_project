@@ -13,6 +13,7 @@ import matplotlib.ticker as mtick
 import matplotlib.ticker as ticker
 import astropy.units as u
 import scipy
+from scipy import stats 
 import matplotlib
 import matplotlib.pyplot as plt
 from matplotlib import gridspec
@@ -475,7 +476,7 @@ def FitPlot(model,select_period,overwrite=False,noprint=True):
         
         # Plot Time delay posterior distributions
         tau_samples = samples_chunks[i+1][2]
-        roa_tau = np.percentile(tau_samples, [16, 50, 84])        
+        roa_tau = np.percentile(tau_samples, [16, 50, 84])
         dist_label = r'$\tau$'
         dist_label = dist_label + r'$_{'+fltrs[i]+r'}$ ROA dist'+'\n{:4.3f} (+{:4.3f},-{:4.3f})'.format(roa_tau[1],
                                                                                                         roa_tau[0]-roa_tau[1],
@@ -881,9 +882,6 @@ def ChainsPlot(model,select_period,select='tau',start_sample=0,overwrite=False):
     samples = samples_all_flat
 
     output_file = '{}/ROA_Chains{}_{}.pdf'.format(config.output_dir(),add_ext,select)
-    if Utils.check_file(output_file) == True and overwrite==False:
-        print('Not running ROA ChainsPlot, file exists: {}'.format(output_file))
-        return
     
     # Plot each parameter
     labels = []
@@ -897,7 +895,7 @@ def ChainsPlot(model,select_period,select='tau',start_sample=0,overwrite=False):
     
     if type(select ) is int:
         ndim = select
-        fig, axes = plt.subplots(ndim, figsize=(10, 2*ndim), sharex=True)
+        fig, axes = plt.subplots(ndim, figsize=(5, 2*ndim), sharex=True)
         #samples = sampler.get_chain()
         #labels = ["A", "B",r"$\tau$", r"$\sigma$"]
         ct = 0
@@ -907,8 +905,8 @@ def ChainsPlot(model,select_period,select='tau',start_sample=0,overwrite=False):
             ax.set_xlim(0, len(samples))
             #ax.set_ylabel("Param "+str(start_sample+i))
             #print(i,labels[i])
-            ax.set_ylabel(labels[i])
-            ax.yaxis.set_label_coords(-0.1, 0.5)
+            ax.set_ylabel(labels[i],labelpad=40)
+            #ax.yaxis.set_label_coords(-0.1, 0.5)
             ct += 1
         axes[-1].set_xlabel("Chain number")
     elif (select == 'all'):
@@ -933,7 +931,7 @@ def ChainsPlot(model,select_period,select='tau',start_sample=0,overwrite=False):
         if select == 'tau': shifter = 2
         if select == 'sig': shifter = 3
         ndim = len(fltrs)
-        fig, axes = plt.subplots(ndim-1, figsize=(10, 2*ndim), sharex=True)
+        fig, axes = plt.subplots(ndim-1, figsize=(5, 1*ndim), sharex=True)
         #samples = sampler.get_chain()
         #labels = ["A", "B",r"$\tau$", r"$\sigma$"]
         ct = 0
@@ -948,31 +946,41 @@ def ChainsPlot(model,select_period,select='tau',start_sample=0,overwrite=False):
                 ax.set_xlim(0, len(samples))
                 #ax.set_ylabel("Param "+str(start_sample+i))
                 #print(i,all_labels[i*4+shifter])
-                ax.set_ylabel(all_labels[i*4+shifter],fontsize=20)
-                ax.yaxis.set_label_coords(-0.1, 0.5)
+                ax.set_ylabel(all_labels[i*4+shifter],fontsize=14)#,labelpad=40)
+                ax.yaxis.set_label_coords(-0.15, 0.5)
+                ax.axvline(x = len(samples) - 17600, color="black", ls="--",lw=0.5)
                 ct+=1
             if i == 0:
                 mm = -1
         if ndim == 2:
             axes.set_xlabel("Chain number")
+            x_ticks = [xx for xx in range(0, len(samples))[::50000]]
+            axes.set_xticks(x_ticks)
         else:
             axes[-1].set_xlabel("Chain number")
+            x_ticks = [xx for xx in range(0, len(samples))[::50000]]
+            axes[-1].set_xticks(x_ticks)
     elif (select == 'delta'):
-        fig, ax = plt.subplots(1, figsize=(10, 2))
+        fig, ax = plt.subplots(1, figsize=(5, 1))
         #samples = sampler.get_chain()
         #labels = ["A", "B",r"$\tau$", r"$\sigma$"]
         ax.plot(samples[:, -1], "k", alpha=0.3)
         ax.set_xlim(0, len(samples))
         #ax.set_ylabel("Param "+str(start_sample+i))
         #print(i,all_labels[-1])
-        ax.set_ylabel(all_labels[-1],fontsize=20)
+        ax.set_ylabel(all_labels[-1],fontsize=14)
         ax.yaxis.set_label_coords(-0.1, 0.5)
         ax.set_xlabel("Chain number")
+        x_ticks = [xx for xx in range(0, len(samples))[::50000]]
+        ax.set_xticks(x_ticks)
     else:
         print('Invalid chains select input ({}), no action'.format(select))
         return
-	
-    plt.savefig(output_file)
+    plt.tight_layout()
+    if Utils.check_file(output_file) == True and overwrite==False:
+        print('Not writing ROA ChainsPlot, file exists: {}'.format(output_file))
+    else:
+        plt.savefig(output_file)
     if matplotlib.get_backend() == 'TkAgg':
         plt.show()
     else:
@@ -999,9 +1007,6 @@ def CornerPlot(model,select_period,select='tau',overwrite=False):
     add_ext = add_ext + '_{}'.format(select_period)
     
     output_file = '{}/ROA_Corner{}_{}.pdf'.format(config.output_dir(),add_ext,select)
-    if Utils.check_file(output_file) == True and overwrite==False:
-        print('Not running ROA CornerPlot, file exists: {}'.format(output_file))
-        return
 
     samples_file = '{}/samples_flat{}.obj'.format(config.output_dir(),add_ext)
     if Utils.check_file(samples_file) == False:
@@ -1019,7 +1024,12 @@ def CornerPlot(model,select_period,select='tau',overwrite=False):
     labels.append(r'$\Delta$')
     all_labels = labels.copy()
     del labels[2]
-
+    plt.rcParams.update({
+        "font.family": "Serif",  
+        "font.serif": ["Times New Roman"],
+        "figure.figsize":[9,11],
+        "font.size": 12})
+    fig = plt.figure()
     #print(labels)
     if (select == 'tau') or (select == 'A') or (select == 'B') or (select == 'sig'):
         if select == 'A': shifter = 0
@@ -1038,14 +1048,17 @@ def CornerPlot(model,select_period,select='tau',overwrite=False):
         #print(np.array(labels)[list_only])
         gg = corner.corner(samples[:,list_only],show_titles=True,
                            labels=np.array(labels)[list_only],
-                           title_kwargs={'fontsize':19})
+                           title_kwargs={'fontsize':12}, label_kwargs={'fontsize':12},fig=fig)
     elif select == 'all':
         gg = corner.corner(samples,show_titles=True,labels=labels)
     else:
         print('Invalid chains select input ({}), no action'.format(select))
         return
-	
-    plt.savefig(output_file)
+
+    if Utils.check_file(output_file) == True and overwrite==False:
+        print('Not writing ROA CornerPlot, file exists: {}'.format(output_file))
+    else:
+        plt.savefig(output_file)
     if matplotlib.get_backend() == 'TkAgg':
         plt.show()
     else:
@@ -1348,19 +1361,21 @@ def FluxFlux(model,select_period,overwrite=False):
         print('Writing pyroa fluxflux data {}'.format(output_file))
         df.to_csv(output_file,index=False)
 
-def LagSpectrum(model,select_period,add_ccf=True,overwrite=False):
+def LagSpectrum(model,select_period,big_disk=False,add_ccf=True,overwrite=False):
 
     config = model.config()
     roa_params = config.roa_params()
     ccf_params = config.ccf_params()
-
+    # Z-score of 1 (1 s.d. above mean in normal dist)
+    perclim = 84.1344746
     delay_ref = roa_params["delay_ref"]
     roa_model = roa_params["model"]
     mjd_range = config.observation_params()['periods'][select_period]['mjd_range']
     exclude_fltrs = roa_params["exclude_fltrs"]    
     fltrs = config.fltrs()
-    # NEED TO CHANGE when delay_ref also in the ROA list
-    #fltrs = [fltr for fltr in fltrs if fltr not in exclude_fltrs]
+#    if select_period == "May22-Mar23":
+#        #remove bad observation
+#        fltrs = [ff for ff in fltrs if ff != "u"]
     fltrs = [fltr for fltr in fltrs if fltr not in exclude_fltrs]
     redshift = roa_params["redshift"]
     wavelengths = roa_params["wavelengths"]
@@ -1370,6 +1385,23 @@ def LagSpectrum(model,select_period,add_ccf=True,overwrite=False):
     band_colors = roa_params["band_colors"]
     band_colors = [band_colors[fltr] for fltr in fltrs]
 
+    ccf_data = []
+    for fltr in fltrs:
+        tlags_centroid = None
+        centroidfile = '{}/Centroid_{}_{}_{}.dat'.format(config.output_dir(),select_period,delay_ref,fltr)
+        if (Utils.check_file(centroidfile) == True and add_ccf == True):
+            df = pd.read_csv(centroidfile,
+                             header=None,index_col=None,
+                             quoting=csv.QUOTE_NONE,
+            delim_whitespace=True)
+            tlags_centroid = df[0].to_numpy()
+            centau = stats.scoreatpercentile(tlags_centroid, 50)
+            centau_uperr = (stats.scoreatpercentile(tlags_centroid, perclim))-centau
+            centau_loerr = centau-(stats.scoreatpercentile(tlags_centroid, (100.-perclim)))
+            ccf_data.append([centau,centau_uperr,centau_loerr])
+        else:
+            print('No CCF data available for plot at {}'.format(centroidfile))
+            add_ccf = False
     
     fltrs = [delay_ref] + fltrs
     
@@ -1411,7 +1443,8 @@ def LagSpectrum(model,select_period,add_ccf=True,overwrite=False):
             list_only.append(i*4+shifter+mm)
         if i == ss:
             mm = -1
-    # Get the 
+    # Get the lags in appropriate numpy form
+    ccf_lag,ccf_lag_m,ccf_lag_p = np.zeros(ndim-1),np.zeros(ndim-1),np.zeros(ndim-1)
     lag,lag_m,lag_p = np.zeros(ndim-1),np.zeros(ndim-1),np.zeros(ndim-1)
     for j,i in enumerate(list_only):
         #print(i)
@@ -1421,26 +1454,50 @@ def LagSpectrum(model,select_period,add_ccf=True,overwrite=False):
         lag[j] = q50
         lag_m[j] = q50-q16
         lag_p[j] = q84-q50
-    fig = plt.figure(figsize=(10,7))
+        if add_ccf == True and ccf_data[j] is not None:
+            ccf_lag[j] = ccf_data[j][0]
+            ccf_lag_m[j] = ccf_data[j][1]
+            ccf_lag_p[j] = ccf_data[j][2]
+    fig = plt.figure(figsize=(6,5))
     ax = fig.add_subplot(111)
 
     plt.axhline(y=0,ls='--',alpha=0.5,color="black")
 
     if band_colors == None: band_colors = 'k'*7
 
+    if select_period == "May22-Mar23":
+        lag = lag[1:]
+        lag_m = lag_m[1:]
+        fltrs = fltrs[1:]
+        FWHM = FWHM[1:]
+        wavelengths = wavelengths[1:]
+        ccf_lag = ccf_lag[1:]
+        ccf_lag_m = ccf_lag_m[1:]
+        band_colors=band_colors[1:]
+    
     lambda_0 = roa_params["wavelengths"][delay_ref]/(1+redshift)
     lambda_i = np.array(wavelengths)/(1+redshift)
     tau = lag/(1+redshift)
     tau_err = lag_m/(1+redshift)
     fwhm_err = np.array(FWHM)/2.0
-    def tau_func(l_i,tau_0):
-        return tau_0*((l_i/lambda_0)**(4/3) - 1)
+    if big_disk:
+        b = 2.0
+    else:
+        b = 4.0/3.0
+    def tau_func(l_i,tau_0,y_0):
+        return tau_0*((l_i/lambda_0)**b - y_0)
         
-    popt, pcov = scipy.optimize.curve_fit(tau_func,lambda_i,tau,p0=[(1.0/3.0)],sigma=lag_m)
+    popt, pcov = scipy.optimize.curve_fit(tau_func,lambda_i,tau,p0=[(1.0/3.0),1.0],sigma=tau_err)
     perr = np.sqrt(np.diag(pcov))
+    print('Estimate tau_0={:4.3f} err={:4.3f}, y_0={:4.3f} err={:4.3f}'.format(popt[0],perr[0], popt[1], perr[1]))
 
-    print('Estimate tau_0={:4.3f} err={:4.3f}'.format(popt[0],perr[0]))
-    
+    if add_ccf == True:
+        ccf_tau = ccf_lag/(1+redshift)
+        ccf_tau_err = ccf_lag_m/(1+redshift)
+        ccf_popt, ccf_pcov = scipy.optimize.curve_fit(tau_func,lambda_i,ccf_tau,p0=[(1.0/3.0), 1.0],sigma=ccf_tau_err)
+        ccf_perr = np.sqrt(np.diag(ccf_pcov))
+        print('Estimate ccf_tau_0={:4.3f} err={:4.3f} ccf_y_0={:4.3f} err={:4.3f}'.format(ccf_popt[0],ccf_perr[0], ccf_popt[1],ccf_perr[1]))
+
     wvs = np.linspace(lambda_i[0]-300,lambda_i[-1]+300,1000)
     taus = tau_func(wvs,*popt)
     taus_plus_err = tau_func(wvs,*(popt+perr))
@@ -1451,18 +1508,32 @@ def LagSpectrum(model,select_period,add_ccf=True,overwrite=False):
         plt.errorbar(lambda_i[i],tau[i],
                      yerr=tau_err[i],xerr=fwhm_err[i],marker='o',
                      color=band_colors[i])
-        plt.plot(wvs,taus,ls='dashed',color="mediumvioletred")
-        plt.fill_between(wvs, taus_plus_err, taus_minus_err, alpha=0.5, color="thistle")
+    plt.plot(wvs,taus,ls='dashed',color="mediumvioletred")
+    plt.fill_between(wvs, taus_plus_err, taus_minus_err, alpha=0.5, color="thistle")
+
+    if add_ccf:
+        ccf_taus = tau_func(wvs,*ccf_popt)
+        ccf_taus_plus_err = tau_func(wvs,*(ccf_popt+ccf_perr))
+        ccf_taus_minus_err = tau_func(wvs,*(ccf_popt-ccf_perr))
+
+        for i in range(lag.size):
+            plt.errorbar(lambda_i[i],ccf_tau[i],
+                         yerr=ccf_tau_err[i],xerr=fwhm_err[i],marker='d',
+                         color="dimgray",alpha=0.6)
+        plt.plot(wvs,ccf_taus,ls='dashed',color="dimgray", alpha=0.6)
+        plt.fill_between(wvs, ccf_taus_plus_err, ccf_taus_minus_err, alpha=0.25, color="gray")
         
     if redshift > 0:
         plt.xlabel(r'Rest Wavelength ($\mathrm{\AA}$)')
-        plt.ylabel(r'$\tau_{\rm ROA}$ (day)')
+        plt.ylabel(r'$\tau$ (day)')
     else:
         plt.xlabel(r'Observed Wavelength ($\mathrm{\AA}$)')
         plt.ylabel(r'$\tau$ (day)')
 
-    plt.title('{} {} Lag Spectrum'.format(config.agn(),select_period))
-    output_file = '{}/ROA_lagspectrum{}.pdf'.format(config.output_dir(),add_ext)
+    plt.title('{} {} Lag Spectrum (b={:4.3f})'.format(config.agn(),select_period,b))
+    output_file = '{}/ROA_lagspectrum{}_{:3.2f}.pdf'.format(config.output_dir(),add_ext,b)
+    if add_ccf:
+        output_file = '{}/ROA_lagspectrum{}_ccf_{:3.2f}.pdf'.format(config.output_dir(),add_ext,b)
     if (os.path.exists(output_file) == True) and (overwrite == False):
         print('Not writing pyroa lag spectrum plot, file exists: {}'.format(output_file))
     else:

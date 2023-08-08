@@ -12,20 +12,17 @@ then
 fi
 SCRIPT=${BASH_SOURCE[0]}
 SCRIPTDIR=`dirname $SCRIPT`
-echo $SCRIPTDIR
 LAUNCH_SCRIPT="python $SCRIPTDIR/launcher.py"
 ARGS_SCRIPT="python $SCRIPTDIR/get_args.py"
 #This builds a temporary log dir and populates it with a backup of the config
 LOG_DIR=`$ARGS_SCRIPT $AGN tmp_dir`
-TESTEXT=${TESTEXT:-""}
-echo $TESTEXT
 DRYRUN=${DRYRUN:-0}
 RAW_PLOT=${RAW_PLOT:-0}
 CALIBRATE=${CALIBRATE:-0}
 CCF=${CCF:-0}
 ROA=${ROA:-0}
 ANALYSIS=${ANALYSIS:-0}
-echo "Running signal analysis for $AGN"
+echo "Running data pipeline for $AGN"
 echo "--LOGDIR--"
 echo "Writing parameters to $LOG_DIR/used_params.json"
 FLTRS=`$ARGS_SCRIPT $AGN fltrs`
